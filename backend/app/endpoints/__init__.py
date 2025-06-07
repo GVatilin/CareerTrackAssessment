@@ -5,6 +5,7 @@ from .settings import api_router as settings_router
 from .google_auth import api_router as google_router
 from .upload import api_router as upload_router
 from .question import api_router as question_router
+from .topic import api_router as topic_router
 
 
 list_of_routes = [
@@ -15,6 +16,7 @@ list_of_routes = [
     google_router,
     upload_router,
     question_router,
+    topic_router,
 ]
 
 __all__ = [
