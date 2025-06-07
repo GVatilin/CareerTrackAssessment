@@ -1,7 +1,6 @@
-from sqlalchemy import Column, String, Boolean, UUID, Time, ForeignKey, Integer, JSON
+from sqlalchemy import Column, String, Boolean, UUID, ForeignKey, Integer
 from app.database import DeclarativeBase
 import uuid
-from sqlalchemy.ext.mutable import MutableList
 from sqlalchemy.orm import validates, relationship
 
 
@@ -20,6 +19,9 @@ class Question(DeclarativeBase):
     description = Column(String)
     type = Column(Integer)         #0 - один ответ правильный, 1 - несколько ответов
 
+    topic_id = Column(UUID, ForeignKey("Topic.id"), index=True)
+    topic = relationship("Topic")
+
 
 class AIQuestion(DeclarativeBase):
     __tablename__ = "AIQuestion"
@@ -32,6 +34,8 @@ class AIQuestion(DeclarativeBase):
     )
 
     description = Column(String)
+    topic_id = Column(UUID, ForeignKey("Topic.id"), index=True)
+    topic = relationship("Topic")
 
 
 class Answer(DeclarativeBase):

@@ -5,6 +5,7 @@ from uuid import UUID
 class QuestionCreateForm(BaseModel):
     description: str
     type: int
+    topic_id: UUID
 
 
 class AIQuestionCreateForm(BaseModel):
@@ -15,6 +16,7 @@ class QuestionDebug(BaseModel):
     id: UUID
     description: str 
     type: int
+    topic_id: UUID
     
 
 class AnswerCreateForm(BaseModel):

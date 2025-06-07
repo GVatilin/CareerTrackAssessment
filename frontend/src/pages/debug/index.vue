@@ -51,6 +51,14 @@ export default {
         answers: {
           title: 'Answers',
           endpoint: `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/question/debug/get_answers`
+        },
+        chapters: {
+          title: 'Chapters',
+          endpoint: `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/topic/debug/get_chapters`
+        },
+        topics: {
+          title: 'Topics',
+          endpoint: `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/topic/debug/get_topics`
         }
       }
     };
