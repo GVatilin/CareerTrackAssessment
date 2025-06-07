@@ -2,7 +2,8 @@ from sqlalchemy import Column, String, Boolean, UUID, Time, ForeignKey, Integer,
 from app.database import DeclarativeBase
 import uuid
 from sqlalchemy.ext.mutable import MutableList
-from sqlalchemy.orm import validates
+from sqlalchemy.orm import validates, relationship
+
 
 class Question(DeclarativeBase):
     __tablename__ = "Question"
@@ -13,7 +14,9 @@ class Question(DeclarativeBase):
         default=uuid.uuid4,
         unique=True
     )
-
+    
+    author_id = Column(UUID, ForeignKey("Users.id"), index=True)
+    author = relationship("User")
     description = Column(String)
     answers = Column(MutableList.as_mutable(JSON), default=[])
     type = Column(Integer)         #0 - один ответ правильный, 1 - несколько ответов
