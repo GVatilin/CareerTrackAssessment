@@ -1,6 +1,3 @@
-from app.schemas import ScheduleUpdateForm
-
-
 import datetime
 
 
@@ -99,7 +96,7 @@ async def payload_add_schedule_tasks(settings, response):
         ],
     }
 
-
+'''
 async def make_schedule_tasks(data):
     ans = []
     for task in data:
@@ -115,3 +112,4 @@ async def make_schedule_tasks(data):
         ans.append(db_task)
     
     return ans
+'''

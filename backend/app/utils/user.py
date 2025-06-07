@@ -11,7 +11,6 @@ from app.config import DefaultSettings, get_settings
 from app.database.connection import get_session
 from app.schemas import RegistrationForm
 from app.database.models import User, Settings
-from app.database.models.user import BlackList
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return get_settings().PWD_CONTEXT.verify(plain_password, hashed_password)
@@ -20,10 +19,6 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 async def get_user_by_email(session: AsyncSession, email: str) -> User | None:
     query = select(User).where(User.email == email)
     return await session.scalar(query)
-
-async def check_token_from_black_list(session: AsyncSession, token: str)-> bool:
-     query = select(BlackList).where(BlackList.token == token)
-     return (await session.scalar(query) != None)
 
 async def register_user(session: AsyncSession, user_data: RegistrationForm) -> bool:
     try:
@@ -76,12 +71,6 @@ async def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    if await check_token_from_black_list(session, token):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has been revoked",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
@@ -113,16 +102,3 @@ async def get_user_settings(current_user: User, session: AsyncSession) -> Settin
     query = select(Settings).where(Settings.user_id == current_user.id)
     settings = await session.scalar(query)
     return settings
-
-async def add_token_to_blacklist(
-    token: Annotated[str, Depends(get_settings().OAUTH2_SCHEME)],
-    session: Annotated[AsyncSession, Depends(get_session)],
- ) -> bool:
-    blacklist_token = BlackList(token=token)
-    session.add(blacklist_token)
-    await session.flush()
-    try:
-        await session.commit()
-    except exc.IntegrityError:
-        return False
-    return True

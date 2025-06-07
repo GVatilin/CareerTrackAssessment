@@ -3,7 +3,6 @@ from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 from authlib.integrations.starlette_client import OAuth
 from app.utils.s3_manager import S3Client
-from app.utils.payment_manager import PaymentAPI
 
 
 class DefaultSettings(BaseSettings):
@@ -100,9 +99,6 @@ class DefaultSettings(BaseSettings):
             bucket_name=self.AWS_BUCKET_NAME
         )
     
-    @property
-    def pay_client(self) -> PaymentAPI:
-      return PaymentAPI(api_key=self.CRYPTO_API_KEY)
 
 settings: DefaultSettings | None = None
 

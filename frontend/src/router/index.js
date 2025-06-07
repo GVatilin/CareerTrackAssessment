@@ -9,13 +9,13 @@ const routes = [
   {
     path: '/login',
     name: 'Login Page',
-    component: () => import('../pages/login/LoginIndex.vue'),
+    component: () => import('../pages/login/index.vue'),
     meta: { isLogin: true }
   },
   {
     path: '/registration',
     name: 'Registration',
-    component: () => import('../pages/login/LoginIndex.vue'),
+    component: () => import('../pages/login/index.vue'),
     meta: { isLogin: false }
   },
   {

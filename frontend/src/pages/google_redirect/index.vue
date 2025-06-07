@@ -25,5 +25,4 @@ onMounted(() => {
 </template>
 
 <style scoped>
-@import "../login/components/LoginContainer.css";
 </style>

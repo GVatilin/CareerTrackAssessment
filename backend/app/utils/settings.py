@@ -12,8 +12,6 @@ from app.database.connection import get_session
 from app.database.models import User, Settings
 from app.schemas.settings import EmailUpdateForm, PasswordUpdateForm
 from uuid import UUID
-from app.schemas import UserTextSettings
-from app.schemas.settings import WorkingHoursForm
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -50,36 +48,6 @@ async def update_email(id: UUID, updated_email: str, session: AsyncSession) -> b
         return False
     setattr(result, "email", updated_email)
     await session.commit()
-    return True
-
-
-async def set_text_settings(response: UserTextSettings, current_user: User, session: AsyncSession) -> bool:
-    query = select(Settings).where(Settings.user_id == current_user.id)
-    result = await session.scalar(query)
-    result.text_settings = response.text
-
-    try:
-        await session.commit()
-    except Exception as e:
-        await session.rollback()
-        raise HTTPException(status_code=500, detail=f"Database error: {e}")
-    
-    return True
-
-
-async def working_hours(response: WorkingHoursForm, current_user: User, session: AsyncSession) -> bool:
-    query = select(Settings).where(Settings.user_id == current_user.id)
-    result = await session.scalar(query)
-    
-    result.start_working = response.start_working
-    result.end_working = response.end_working
-
-    try:
-        await session.commit()
-    except Exception as e:
-        await session.rollback()
-        raise HTTPException(status_code=500, detail=f"Database error: {e}")
-    
     return True
 
 

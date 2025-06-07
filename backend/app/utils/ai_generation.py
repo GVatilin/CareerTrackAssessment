@@ -1,4 +1,4 @@
-from app.database.models import DeadlineTask, Schedule
+'''from app.database.models import DeadlineTask, Schedule
 from app.schemas import DeadlineGenerate, DeadlineTaskCreateForm,\
   ScheduleGenerate, ScheduleUpdateForm, AddScheduleTasksAI
 from app.utils.user import User, get_user_settings
@@ -99,3 +99,4 @@ async def add_schedule_tasks(response: AddScheduleTasksAI,
                 return ans
             else:
                 return []
+                '''
