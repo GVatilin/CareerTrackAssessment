@@ -1,13 +1,10 @@
 from pydantic import BaseModel
 from uuid import UUID
-from typing import List
 
 
 class QuestionCreateForm(BaseModel):
-    description: str 
-    answers: List[str] = []
+    description: str
     type: int
-    right_answers: List[str] = []
 
 
 class AIQuestionCreateForm(BaseModel):
@@ -17,6 +14,16 @@ class AIQuestionCreateForm(BaseModel):
 class QuestionDebug(BaseModel):
     id: UUID
     description: str 
-    answers: List[str] = []
     type: int
-    right_answers: List[str] = []
+    
+
+class AnswerCreateForm(BaseModel):
+    text: str
+    is_correct: bool
+
+
+class AnswerDebug(BaseModel):
+    id: UUID
+    text: str
+    is_correct: bool
+    question_id: UUID

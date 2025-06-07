@@ -18,10 +18,7 @@ class Question(DeclarativeBase):
     author_id = Column(UUID, ForeignKey("Users.id"), index=True)
     author = relationship("User")
     description = Column(String)
-    answers = Column(MutableList.as_mutable(JSON), default=[])
     type = Column(Integer)         #0 - один ответ правильный, 1 - несколько ответов
-    right_answers = Column(MutableList.as_mutable(JSON), default=[]) 
-
 
 
 class AIQuestion(DeclarativeBase):
@@ -35,3 +32,19 @@ class AIQuestion(DeclarativeBase):
     )
 
     description = Column(String)
+
+
+class Answer(DeclarativeBase):
+    __tablename__ = "Answers"
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        unique=True
+    )
+
+    text = Column(String)
+    question_id = Column(UUID, ForeignKey("Question.id"), index=True)
+    question = relationship("Question")
+    is_correct = Column(Boolean)
