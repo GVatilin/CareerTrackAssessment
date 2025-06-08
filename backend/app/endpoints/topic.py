@@ -6,7 +6,7 @@ from typing import Annotated
 
 from app.utils.user import get_current_user, User
 from app.database.connection import get_session
-from app.schemas import TopicCreateForm, ChapterCreateForm, TopicDebug, ChapterDebug
+from app.schemas import TopicCreateForm, ChapterCreateForm, TopicResponse, ChapterResponse
 from app.utils.topic import (
     add_topic,
     add_chapter,
@@ -55,23 +55,23 @@ async def create_chapter(chapter: Annotated[ChapterCreateForm, Body()],
                         detail="Error creating chapter")
 
 
-@api_router.get('/debug/get_topics',
+@api_router.get('/get_topics',
             status_code=status.HTTP_200_OK,
             responses={
                      status.HTTP_401_UNAUTHORIZED: {
                          "descriprion": "Non authorized"
                      }
                  })
-async def get_question_debug(session: Annotated[AsyncSession, Depends(get_session)]) -> list[TopicDebug]:
+async def get_question(session: Annotated[AsyncSession, Depends(get_session)]) -> list[TopicResponse]:
     return await get_all_topics(session)
 
 
-@api_router.get('/debug/get_chapters',
+@api_router.get('/get_chapters',
             status_code=status.HTTP_200_OK,
             responses={
                      status.HTTP_401_UNAUTHORIZED: {
                          "descriprion": "Non authorized"
                      }
                  })
-async def get_question_debug(session: Annotated[AsyncSession, Depends(get_session)]) -> list[ChapterDebug]:
+async def get_question(session: Annotated[AsyncSession, Depends(get_session)]) -> list[ChapterResponse]:
     return await get_all_chapters(session)

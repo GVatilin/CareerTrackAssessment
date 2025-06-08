@@ -6,11 +6,14 @@ from typing import Annotated
 
 from app.utils.user import get_current_user, User
 from app.database.connection import get_session
-from app.schemas import QuestionCreateForm, QuestionDebug, AnswerCreateForm, AnswerDebug
+from app.schemas import QuestionCreateForm, QuestionResponse, \
+AnswerCreateForm, AnswerResponse, AnswerOptionsToQuestion, UserAnswerForm, CorrectAnswers
 from app.utils.question import (
     add_question,
     get_all_questions,
     get_all_answers,
+    get_answers_to_question,
+    user_answers,
 )
 
 
@@ -39,14 +42,14 @@ async def create_question(question: Annotated[QuestionCreateForm, Body()],
                         detail="Error creating question")
 
 
-@api_router.get('/debug/get_simple_questions',
+@api_router.get('/get_questions',
             status_code=status.HTTP_200_OK,
             responses={
                      status.HTTP_401_UNAUTHORIZED: {
                          "descriprion": "Non authorized"
                      }
                  })
-async def get_question_debug(session: Annotated[AsyncSession, Depends(get_session)]) -> list[QuestionDebug]:
+async def get_question(session: Annotated[AsyncSession, Depends(get_session)]) -> list[QuestionResponse]:
     return await get_all_questions(session)
 
 
@@ -57,5 +60,31 @@ async def get_question_debug(session: Annotated[AsyncSession, Depends(get_sessio
                          "descriprion": "Non authorized"
                      }
                  })
-async def get_question_debug(session: Annotated[AsyncSession, Depends(get_session)]) -> list[AnswerDebug]:
+async def get_answers_debug(session: Annotated[AsyncSession, Depends(get_session)]) -> list[AnswerResponse]:
     return await get_all_answers(session)
+
+
+@api_router.post('/get_answers_to_question',
+            status_code=status.HTTP_200_OK,
+            responses={
+                     status.HTTP_401_UNAUTHORIZED: {
+                         "descriprion": "Non authorized"
+                     }
+                 })
+async def get_answers(response: AnswerOptionsToQuestion,
+                      current_user: Annotated[User, Depends(get_current_user)],
+                      session: Annotated[AsyncSession, Depends(get_session)]) -> list[AnswerResponse]:
+    return await get_answers_to_question(response, current_user, session)
+
+
+@api_router.post('/check_user_answers',
+            status_code=status.HTTP_200_OK,
+            responses={
+                     status.HTTP_401_UNAUTHORIZED: {
+                         "descriprion": "Non authorized"
+                     }
+                 })
+async def check_user_answers(response: UserAnswerForm,
+                             current_user: Annotated[User, Depends(get_current_user)],
+                             session: Annotated[AsyncSession, Depends(get_session)]) -> CorrectAnswers:
+    return await user_answers(response, current_user, session)
