@@ -11,12 +11,12 @@ class TopicCreateForm(BaseModel):
     chapter_id: UUID
 
 
-class ChapterDebug(BaseModel):
+class ChapterResponse(BaseModel):
     id: UUID
     name: str
 
 
-class TopicDebug(BaseModel):
+class TopicResponse(BaseModel):
     id: UUID
     name: str
     chapter_id: UUID

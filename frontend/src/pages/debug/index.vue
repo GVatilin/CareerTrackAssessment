@@ -42,7 +42,7 @@ export default {
         },
         questions: {
           title: 'Questions',
-          endpoint: `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/question/debug/get_simple_questions`
+          endpoint: `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/question/get_questions`
         },
         settings: {
           title: 'Settings',
@@ -54,11 +54,11 @@ export default {
         },
         chapters: {
           title: 'Chapters',
-          endpoint: `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/topic/debug/get_chapters`
+          endpoint: `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/topic/get_chapters`
         },
         topics: {
           title: 'Topics',
-          endpoint: `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/topic/debug/get_topics`
+          endpoint: `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/topic/get_topics`
         }
       }
     };

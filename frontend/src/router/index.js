@@ -34,6 +34,11 @@ const routes = [
     component: () => import('../pages/debug/index.vue')
   },
   {
+    path: '/textbook',
+    name: 'Textbook',
+    component: () => import('../pages/textbook/index.vue')
+  },
+  {
     path: '/auth/google/callback',
     name: 'Google Auth',
     component: () => import('../pages/google_redirect/index.vue')
