@@ -1,9 +1,13 @@
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from sqlalchemy import delete
+
 
 from app.database.models import Question, User, Answer
-from app.schemas import QuestionCreateForm, AnswerCreateForm, AnswerOptionsToQuestion, UserAnswerForm, CorrectAnswers
-from sqlalchemy.future import select
+from app.schemas import QuestionCreateForm, AnswerCreateForm, \
+    AnswerOptionsToQuestion, UserAnswerForm, CorrectAnswers, \
+    QuestionUpdateForm, QuestionID
 
 
 async def add_question(question: QuestionCreateForm, answers: list[AnswerCreateForm], current_user: User, session: AsyncSession):
@@ -72,3 +76,36 @@ async def user_answers(response: UserAnswerForm,
         is_correct=is_right,
         correct_answer_id=list(correct_ids),
     )
+
+
+async def edit_question(updated_question: QuestionUpdateForm, session: AsyncSession):
+    query = select(Question).where(Question.id == updated_question.id)
+    question = await session.scalar(query)
+
+    if not question:
+        return False
+    
+    for key, value in updated_question.model_dump(exclude_none=True).items():
+        setattr(question, key, value)
+    
+    try:
+        await session.commit()
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    return True
+
+
+async def remove_question(question: QuestionID, session: AsyncSession):
+    query_answers = delete(Answer).where(Answer.question_id == question.id)
+    await session.execute(query_answers)
+
+    query_questions = delete(Question).where(Question.id == question.id)
+    await session.execute(query_questions)
+
+    try:
+        await session.commit()
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    return True

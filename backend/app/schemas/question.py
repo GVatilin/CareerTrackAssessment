@@ -7,6 +7,7 @@ class QuestionCreateForm(BaseModel):
     description: str
     type: int
     topic_id: UUID
+    explanation: str
 
 
 class AIQuestionCreateForm(BaseModel):
@@ -18,6 +19,7 @@ class QuestionResponse(BaseModel):
     description: str 
     type: int
     topic_id: UUID
+    explanation: str
     
 
 class AnswerCreateForm(BaseModel):
@@ -44,3 +46,15 @@ class UserAnswerForm(BaseModel):
 class CorrectAnswers(BaseModel):
     is_correct: bool
     correct_answer_id: list[UUID]
+
+
+class QuestionUpdateForm(BaseModel):
+    id: UUID
+    description: str 
+    type: int
+    topic_id: UUID
+    explanation: str
+
+
+class QuestionID(BaseModel):
+    id: UUID
