@@ -81,6 +81,32 @@
            :class="resultStatus ? 'text-green-600' : 'text-red-600'">
           {{ resultMessage }}
         </p>
+
+        <!-- Reset Button -->
+        <button
+          v-if="resultStatus !== null"
+          @click="resetQuestion"
+          class="mt-2 px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">
+          Ответить ещё раз
+        </button>
+
+        <!-- Navigation Buttons -->
+        <div class="mt-6 flex justify-between">
+          <button
+            @click="prevQuestion"
+            :disabled="!hasPrev"
+            class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 disabled:opacity-50"
+          >
+            Prev
+          </button>
+          <button
+            @click="nextQuestion"
+            :disabled="!hasNext"
+            class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
       </div>
 
       <div v-else class="text-gray-500">
@@ -91,7 +117,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 
 
@@ -238,12 +264,95 @@ const submitAnswers = async () => {
     // Ответ от сервера: { is_correct: bool, correct_answer_ids: UUID[] }
     resultStatus.value = data.is_correct
     resultMessage.value = data.is_correct ? 'Правильно!' : 'Неправильно'
-    correctAnswers.value = data.correct_answer_ids
+    correctAnswers.value = data.correct_answer_id
   } catch (err) {
     console.error('Ошибка при проверке ответов:', err)
   }
 }
 
+// Computed list of topics ordered by chapters
+const orderedTopics = computed(() =>
+  chapters.value.flatMap(chap =>
+    topics.value.filter(t => t.chapter_id === chap.id)
+  )
+)
+
+// Navigation state
+const hasNext = computed(() => {
+  if (!selectedQuestion.value) return false
+  const currentQs = getQuestionsByTopic(selectedQuestion.value.topic_id)
+  const idx = currentQs.findIndex(q => q.id === selectedQuestion.value.id)
+  if (idx < currentQs.length - 1) return true
+  const topicIdx = orderedTopics.value.findIndex(
+    t => t.id === selectedQuestion.value.topic_id
+  )
+  for (let i = topicIdx + 1; i < orderedTopics.value.length; i++) {
+    if (getQuestionsByTopic(orderedTopics.value[i].id).length) return true
+  }
+  return false
+})
+
+const hasPrev = computed(() => {
+  if (!selectedQuestion.value) return false
+  const currentQs = getQuestionsByTopic(selectedQuestion.value.topic_id)
+  const idx = currentQs.findIndex(q => q.id === selectedQuestion.value.id)
+  if (idx > 0) return true
+  const topicIdx = orderedTopics.value.findIndex(
+    t => t.id === selectedQuestion.value.topic_id
+  )
+  for (let i = topicIdx - 1; i >= 0; i--) {
+    if (getQuestionsByTopic(orderedTopics.value[i].id).length) return true
+  }
+  return false
+})
+
+// Navigation actions
+const nextQuestion = () => {
+  const currentQs = getQuestionsByTopic(selectedQuestion.value.topic_id)
+  const idx = currentQs.findIndex(q => q.id === selectedQuestion.value.id)
+  if (idx < currentQs.length - 1) {
+    selectQuestion(currentQs[idx + 1])
+  } else {
+    const topicIdx = orderedTopics.value.findIndex(t => t.id === selectedQuestion.value.topic_id)
+    for (let i = topicIdx + 1; i < orderedTopics.value.length; i++) {
+      const nextQs = getQuestionsByTopic(orderedTopics.value[i].id)
+      if (nextQs.length) {
+        openChapters.value = [orderedTopics.value[i].chapter_id]
+        openTopics.value = [orderedTopics.value[i].id]
+        selectQuestion(nextQs[0])
+        break
+      }
+    }
+  }
+}
+
+const prevQuestion = () => {
+  const currentQs = getQuestionsByTopic(selectedQuestion.value.topic_id)
+  const idx = currentQs.findIndex(q => q.id === selectedQuestion.value.id)
+  if (idx > 0) {
+    selectQuestion(currentQs[idx - 1])
+  } else {
+    const topicIdx = orderedTopics.value.findIndex(t => t.id === selectedQuestion.value.topic_id)
+    for (let i = topicIdx - 1; i >= 0; i--) {
+      const prevQs = getQuestionsByTopic(orderedTopics.value[i].id)
+      if (prevQs.length) {
+        openChapters.value = [orderedTopics.value[i].chapter_id]
+        openTopics.value = [orderedTopics.value[i].id]
+        selectQuestion(prevQs[prevQs.length - 1])
+        break
+      }
+    }
+  }
+}
+   
+const resetQuestion = () => {
+   selectedAnswer.value = null
+   selectedAnswers.value = []
+   userAnswers.value = []
+   correctAnswers.value = []
+   resultStatus.value = null
+   resultMessage.value = ''
+}
 
 onMounted(loadData)
 </script>

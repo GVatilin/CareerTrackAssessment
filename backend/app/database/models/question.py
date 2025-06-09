@@ -18,7 +18,8 @@ class Question(DeclarativeBase):
     author = relationship("User")
     description = Column(String)
     type = Column(Integer)         #0 - один ответ правильный, 1 - несколько ответов
-
+    explanation = Column(String)
+    
     topic_id = Column(UUID, ForeignKey("Topic.id"), index=True)
     topic = relationship("Topic")
 
