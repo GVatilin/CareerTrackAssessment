@@ -7,7 +7,7 @@ from sqlalchemy import delete
 from app.database.models import Question, User, Answer
 from app.schemas import QuestionCreateForm, AnswerCreateForm, \
     AnswerOptionsToQuestion, UserAnswerForm, CorrectAnswers, \
-    QuestionUpdateForm, QuestionID
+    QuestionUpdateForm, QuestionID, AnswerUpdateForm, AnswerID
 
 
 async def add_question(question: QuestionCreateForm, answers: list[AnswerCreateForm], current_user: User, session: AsyncSession):
@@ -102,6 +102,33 @@ async def remove_question(question: QuestionID, session: AsyncSession):
 
     query_questions = delete(Question).where(Question.id == question.id)
     await session.execute(query_questions)
+
+    try:
+        await session.commit()
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    return True
+
+
+async def edit_answer(updated_answer: AnswerUpdateForm, session: AsyncSession):
+    query = select(Answer).where(Answer.id == updated_answer.id)
+    answer = await session.scalar(query)
+
+    for key, value in updated_answer.model_dump().items():
+        setattr(answer, key, value)
+    
+    try:
+        await session.commit()
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    return True
+
+
+async def remove_answer(answer: AnswerID, session: AsyncSession):
+    query = delete(Answer).where(Answer.id == answer.id)
+    await session.execute(query)
 
     try:
         await session.commit()

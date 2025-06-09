@@ -58,3 +58,12 @@ class QuestionUpdateForm(BaseModel):
 
 class QuestionID(BaseModel):
     id: UUID
+
+class AnswerUpdateForm(BaseModel):
+    id: UUID
+    text: str 
+    is_correct: bool
+
+
+class AnswerID(BaseModel):
+    id: UUID

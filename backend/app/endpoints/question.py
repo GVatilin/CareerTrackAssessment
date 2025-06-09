@@ -7,8 +7,9 @@ from typing import Annotated
 from app.utils.user import get_current_user, User
 from app.database.connection import get_session
 from app.schemas import QuestionCreateForm, QuestionResponse, \
-AnswerCreateForm, AnswerResponse, AnswerOptionsToQuestion, \
-UserAnswerForm, CorrectAnswers, QuestionUpdateForm, QuestionID
+    AnswerCreateForm, AnswerResponse, AnswerOptionsToQuestion, \
+    UserAnswerForm, CorrectAnswers, QuestionUpdateForm, QuestionID, \
+    AnswerID, AnswerUpdateForm
 
 from app.utils.question import (
     add_question,
@@ -18,6 +19,8 @@ from app.utils.question import (
     user_answers,
     edit_question,
     remove_question,
+    edit_answer,
+    remove_answer,
 )
 
 
@@ -128,3 +131,39 @@ async def delete_question(question: QuestionID,
         return {"message": "Question deletead"}
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, \
                         detail="Error delete question")
+
+
+@api_router.put('/update_answer',
+            status_code=status.HTTP_200_OK,
+            responses={
+                     status.HTTP_401_UNAUTHORIZED: {
+                         "descriprion": "Non authorized"
+                     }
+                 })
+async def update_answer(updated_answer: AnswerUpdateForm,
+                        current_user: Annotated[User, Depends(get_current_user)],
+                        session: Annotated[AsyncSession, Depends(get_session)]):
+    is_success = await edit_answer(updated_answer, session)
+
+    if is_success:
+        return {"message": "Answer updated"}
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, \
+                        detail="Error updating answer")
+
+
+@api_router.delete('/delete_answer',
+            status_code=status.HTTP_200_OK,
+            responses={
+                     status.HTTP_401_UNAUTHORIZED: {
+                         "descriprion": "Non authorized"
+                     }
+                 })
+async def delete_answer(answer: AnswerID,
+                        current_user: Annotated[User, Depends(get_current_user)],
+                        session: Annotated[AsyncSession, Depends(get_session)]):
+    is_success = await remove_answer(answer, session)
+
+    if is_success:
+        return {"message": "Answer deletead"}
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, \
+                        detail="Error delete answer")
