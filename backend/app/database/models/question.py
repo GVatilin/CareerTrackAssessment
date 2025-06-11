@@ -23,6 +23,13 @@ class Question(DeclarativeBase):
     topic_id = Column(UUID, ForeignKey("Topic.id"), index=True)
     topic = relationship("Topic")
 
+    answers = relationship(
+        "Answer",
+        back_populates="question",
+        cascade="all, delete-orphan",
+        lazy="select",
+    )
+
 
 class AIQuestion(DeclarativeBase):
     __tablename__ = "AIQuestion"
@@ -34,7 +41,11 @@ class AIQuestion(DeclarativeBase):
         unique=True
     )
 
+    author_id = Column(UUID, ForeignKey("Users.id"), index=True)
+    author = relationship("User")
     description = Column(String)
+    explanation = Column(String)
+
     topic_id = Column(UUID, ForeignKey("Topic.id"), index=True)
     topic = relationship("Topic")
 
