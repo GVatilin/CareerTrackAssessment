@@ -30,6 +30,15 @@ class QuestionResponse(BaseModel):
     explanation: str
     
 
+class AIQuestionDebug(BaseModel):
+    id: UUID
+    description: str
+    explanation: str
+
+    author_id: UUID
+    topic_id: UUID
+
+
 class AnswerCreateForm(BaseModel):
     """
     Форма создания варианта ответа для Question

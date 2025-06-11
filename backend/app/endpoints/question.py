@@ -10,7 +10,8 @@ from app.database.connection import get_session
 from app.schemas import QuestionCreateForm, QuestionResponse, \
     AnswerCreateForm, AnswerResponse, AnswerOptionsToQuestion, \
     UserAnswerForm, CorrectAnswers, QuestionUpdateForm, QuestionID, \
-    AnswerID, AnswerUpdateForm, QuizResponse, AIQuestionCreateForm
+    AnswerID, AnswerUpdateForm, QuizResponse, AIQuestionCreateForm, \
+    QuizSubmission, AIQuestionDebug
 
 from app.utils.question import (
     add_question,
@@ -24,6 +25,8 @@ from app.utils.question import (
     remove_answer,
     get_quiz_utils,
     add_ai_question,
+    submit_quiz_utils,
+    get_all_ai_questions,
 )
 
 
@@ -90,6 +93,17 @@ async def get_question(session: Annotated[AsyncSession, Depends(get_session)]) -
                  })
 async def get_answers_debug(session: Annotated[AsyncSession, Depends(get_session)]) -> list[AnswerResponse]:
     return await get_all_answers(session)
+
+
+@api_router.get('/debug/get_ai_questions',
+            status_code=status.HTTP_200_OK,
+            responses={
+                     status.HTTP_401_UNAUTHORIZED: {
+                         "descriprion": "Non authorized"
+                     }
+                 })
+async def get_ai_questions_debug(session: Annotated[AsyncSession, Depends(get_session)]) -> list[AIQuestionDebug]:
+    return await get_all_ai_questions(session)
 
 
 @api_router.post('/get_answers_to_question',
@@ -190,7 +204,7 @@ async def delete_answer(answer: AnswerID,
                         detail="Error delete answer")
 
 
-@api_router.get('/get_quiz',
+@api_router.get('/quiz/get',
             status_code=status.HTTP_200_OK,
             responses={
                      status.HTTP_401_UNAUTHORIZED: {
@@ -203,3 +217,16 @@ async def get_quiz(session: Annotated[AsyncSession, Depends(get_session)],
                    topic_id: Optional[UUID] = Query(None, description="ID темы (Topic)"),
                    chapter_id: Optional[UUID] = Query(None, description="ID раздела (Chapter)"),) -> QuizResponse:
     return await get_quiz_utils(session, count, ai_count, topic_id, chapter_id)
+
+
+@api_router.post('/quiz/submit',
+            status_code=status.HTTP_200_OK,
+            responses={
+                     status.HTTP_401_UNAUTHORIZED: {
+                         "descriprion": "Non authorized"
+                     }
+                 })
+async def submit_quiz(submission: QuizSubmission,
+                      current_user: Annotated[User, Depends(get_current_user)],
+                      session: Annotated[AsyncSession, Depends(get_session)]):
+    return await submit_quiz_utils(submission, session)

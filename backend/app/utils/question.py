@@ -12,7 +12,8 @@ from app.database.models import Question, User, Answer, AIQuestion, Topic
 from app.schemas import QuestionCreateForm, AnswerCreateForm, \
     AnswerOptionsToQuestion, UserAnswerForm, CorrectAnswers, \
     QuestionUpdateForm, QuestionID, AnswerUpdateForm, AnswerID, \
-    QuizResponse, AIQuestionCreateForm, QuestionQuizResponse, AnswerQuizResponse
+    QuizResponse, AIQuestionCreateForm, QuestionQuizResponse, AnswerQuizResponse, \
+    QuizSubmission
 
 
 async def add_question(question: QuestionCreateForm, answers: list[AnswerCreateForm], current_user: User, session: AsyncSession):
@@ -59,6 +60,12 @@ async def get_all_questions(session: AsyncSession):
 
 async def get_all_answers(session: AsyncSession):
     query = select(Answer)
+    result = await session.scalars(query)
+    return result.all()
+
+
+async def get_all_ai_questions(session: AsyncSession):
+    query = select(AIQuestion)
     result = await session.scalars(query)
     return result.all()
 
@@ -189,5 +196,39 @@ async def get_quiz_utils(session: AsyncSession, count: int, ai_count: int, topic
         raise HTTPException(404, detail="Недостаточно AI-вопросов")
     
     return QuizResponse(questions=questions, ai_questions=ai_questions)
-    
 
+
+async def submit_quiz_utils(submission: QuizSubmission, session: AsyncSession):
+    correct_count = 0
+    total_mc = len(submission.answers)
+
+    for qa in submission.answers:
+        result = await session.execute(
+            select(Answer.id).where(
+                Answer.question_id == qa.question_id,
+                Answer.is_correct == True
+            )
+        )
+
+        correct_ids = {row[0] for row in result.all()}
+        user_ids = set(qa.selected_answer_id or [])
+        question = await session.get(Question, qa.question_id)
+
+        if question.type == 0:
+            correct_count += (len(user_ids) == 1 and next(iter(user_ids)) in correct_ids)
+        else:
+            correct_count += (user_ids == correct_ids)
+
+
+    ai_feedback = [
+        {"question_id": a.question_id, "text": a.text}
+        for a in (submission.ai_answers or [])
+    ]
+
+    return {
+        "total_mc": total_mc,
+        "correct_mc": correct_count,
+        "score_percent": round(correct_count / total_mc * 100, 2) if total_mc else 0.0,
+        "ai_answers_received": ai_feedback,
+        "ai_review_required": len(ai_feedback),
+    }

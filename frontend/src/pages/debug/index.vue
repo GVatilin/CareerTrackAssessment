@@ -59,7 +59,11 @@ export default {
         topics: {
           title: 'Topics',
           endpoint: `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/topic/get_topics`
-        }
+        },
+        ai_questions: {
+          title: 'AIQuestions',
+          endpoint: `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/question/debug/get_ai_questions`
+        },
       }
     };
   },
