@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status, HTTPException, Body, Query
+from fastapi import APIRouter, Depends, status, HTTPException, Body, Query, Path
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated, Optional
@@ -9,8 +9,8 @@ from app.utils.user import get_current_user, User
 from app.database.connection import get_session
 from app.schemas import QuestionCreateForm, QuestionResponse, \
     AnswerCreateForm, AnswerResponse, AnswerOptionsToQuestion, \
-    UserAnswerForm, CorrectAnswers, QuestionUpdateForm, QuestionID, \
-    AnswerID, AnswerUpdateForm, QuizResponse, AIQuestionCreateForm, \
+    UserAnswerForm, CorrectAnswers, QuestionUpdateForm, \
+    AnswerUpdateForm, QuizResponse, AIQuestionCreateForm, \
     QuizSubmission, AIQuestionDebug
 
 from app.utils.question import (
@@ -150,17 +150,20 @@ async def update_question(updated_question: QuestionUpdateForm,
                         detail="Error updating question")
 
 
-@api_router.delete('/delete_question',
+@api_router.delete('/questions/{question_id}',
             status_code=status.HTTP_200_OK,
             responses={
                      status.HTTP_401_UNAUTHORIZED: {
                          "descriprion": "Non authorized"
-                     }
+                     },
+                     status.HTTP_404_NOT_FOUND: {
+                         "description": "Question not found"
+                     },
                  })
-async def delete_question(question: QuestionID,
-                          current_user: Annotated[User, Depends(get_current_user)],
-                          session: Annotated[AsyncSession, Depends(get_session)]):
-    is_success = await remove_question(question, session)
+async def delete_question(current_user: Annotated[User, Depends(get_current_user)],
+                          session: Annotated[AsyncSession, Depends(get_session)],
+                          question_id: UUID = Path(..., description="ID вопроса для удаления")):
+    is_success = await remove_question(question_id, session)
 
     if is_success:
         return {"message": "Question deletead"}
@@ -186,17 +189,17 @@ async def update_answer(updated_answer: AnswerUpdateForm,
                         detail="Error updating answer")
 
 
-@api_router.delete('/delete_answer',
+@api_router.delete('/delete_answer/{answer_id}',
             status_code=status.HTTP_200_OK,
             responses={
                      status.HTTP_401_UNAUTHORIZED: {
                          "descriprion": "Non authorized"
                      }
                  })
-async def delete_answer(answer: AnswerID,
-                        current_user: Annotated[User, Depends(get_current_user)],
-                        session: Annotated[AsyncSession, Depends(get_session)]):
-    is_success = await remove_answer(answer, session)
+async def delete_answer(current_user: Annotated[User, Depends(get_current_user)],
+                        session: Annotated[AsyncSession, Depends(get_session)],
+                        answer_id: UUID = Path(..., description="ID варианта ответа для удаления")):
+    is_success = await remove_answer(answer_id, session)
 
     if is_success:
         return {"message": "Answer deletead"}

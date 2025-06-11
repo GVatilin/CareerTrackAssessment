@@ -11,7 +11,7 @@ from uuid import UUID
 from app.database.models import Question, User, Answer, AIQuestion, Topic
 from app.schemas import QuestionCreateForm, AnswerCreateForm, \
     AnswerOptionsToQuestion, UserAnswerForm, CorrectAnswers, \
-    QuestionUpdateForm, QuestionID, AnswerUpdateForm, AnswerID, \
+    QuestionUpdateForm, AnswerUpdateForm, \
     QuizResponse, AIQuestionCreateForm, QuestionQuizResponse, AnswerQuizResponse, \
     QuizSubmission
 
@@ -122,11 +122,11 @@ async def edit_question(updated_question: QuestionUpdateForm, session: AsyncSess
     return True
 
 
-async def remove_question(question: QuestionID, session: AsyncSession):
-    query_answers = delete(Answer).where(Answer.question_id == question.id)
+async def remove_question(question_id: UUID, session: AsyncSession):
+    query_answers = delete(Answer).where(Answer.question_id == question_id)
     await session.execute(query_answers)
 
-    query_questions = delete(Question).where(Question.id == question.id)
+    query_questions = delete(Question).where(Question.id == question_id)
     await session.execute(query_questions)
 
     try:
@@ -152,8 +152,8 @@ async def edit_answer(updated_answer: AnswerUpdateForm, session: AsyncSession):
     return True
 
 
-async def remove_answer(answer: AnswerID, session: AsyncSession):
-    query = delete(Answer).where(Answer.id == answer.id)
+async def remove_answer(answer_id: UUID, session: AsyncSession):
+    query = delete(Answer).where(Answer.id == answer_id)
     await session.execute(query)
 
     try:

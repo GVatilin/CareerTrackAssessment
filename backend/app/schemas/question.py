@@ -96,9 +96,6 @@ class QuestionUpdateForm(BaseModel):
     explanation: str
 
 
-class QuestionID(BaseModel):
-    id: UUID
-
 class AnswerUpdateForm(BaseModel):
     """
     Форма для изменения Answer
@@ -106,10 +103,6 @@ class AnswerUpdateForm(BaseModel):
     id: UUID
     text: str 
     is_correct: bool
-
-
-class AnswerID(BaseModel):
-    id: UUID
 
 
 class AnswerQuizResponse(BaseModel):
