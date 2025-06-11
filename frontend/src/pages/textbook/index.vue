@@ -261,9 +261,9 @@ const submitAnswers = async () => {
       { headers: { Authorization: `Bearer ${token}` } }
     )
 
-    // Ответ от сервера: { is_correct: bool, correct_answer_ids: UUID[] }
-    resultStatus.value = data.is_correct
-    resultMessage.value = data.is_correct ? 'Правильно!' : 'Неправильно'
+    // Ответ от сервера: { is_user_right: bool, correct_answer_ids: UUID[] }
+    resultStatus.value = data.is_user_right
+    resultMessage.value = data.is_user_right ? 'Правильно!' : 'Неправильно'
     correctAnswers.value = data.correct_answer_id
   } catch (err) {
     console.error('Ошибка при проверке ответов:', err)

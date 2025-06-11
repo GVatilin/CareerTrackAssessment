@@ -1,13 +1,17 @@
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import delete
+from sqlalchemy import delete, func
+from sqlalchemy.orm import selectinload
+from collections import defaultdict
+from typing import List
 
 
-from app.database.models import Question, User, Answer
+from app.database.models import Question, User, Answer, AIQuestion
 from app.schemas import QuestionCreateForm, AnswerCreateForm, \
     AnswerOptionsToQuestion, UserAnswerForm, CorrectAnswers, \
-    QuestionUpdateForm, QuestionID, AnswerUpdateForm, AnswerID
+    QuestionUpdateForm, QuestionID, AnswerUpdateForm, AnswerID, \
+    QuizResponse, AIQuestionCreateForm, QuestionQuizResponse, AnswerQuizResponse
 
 
 async def add_question(question: QuestionCreateForm, answers: list[AnswerCreateForm], current_user: User, session: AsyncSession):
@@ -23,6 +27,20 @@ async def add_question(question: QuestionCreateForm, answers: list[AnswerCreateF
         db_answer = Answer(**answer_data)
 
         session.add(db_answer)
+
+    try:
+        await session.commit()
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    return True
+
+
+async def add_ai_question(question: AIQuestionCreateForm, current_user: User, session: AsyncSession):
+    question = question.model_dump()
+    question["author_id"] = current_user.id
+    question = AIQuestion(**question)
+    session.add(question)
 
     try:
         await session.commit()
@@ -136,3 +154,31 @@ async def remove_answer(answer: AnswerID, session: AsyncSession):
         await session.rollback()
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
     return True
+
+
+async def get_quiz_utils(session: AsyncSession, count: int, ai_count: int) -> QuizResponse:
+    query1 = (
+        select(Question)
+        .options(selectinload(Question.answers))
+        .order_by(func.random())
+        .limit(count)
+    )
+    result = await session.execute(query1)
+    questions = result.scalars().all()
+    if len(questions) < count:
+        raise HTTPException(404, detail="Недостаточно обычных вопросов")
+
+    query3 = (
+        select(AIQuestion)
+        .order_by(func.random())
+        .limit(ai_count)
+    )
+
+    res3 = await session.execute(query3)
+    ai_questions = res3.scalars().all()
+    if len(ai_questions) < ai_count:
+        raise HTTPException(404, detail="Недостаточно AI-вопросов")
+    
+    return QuizResponse(questions=questions, ai_questions=ai_questions)
+    
+

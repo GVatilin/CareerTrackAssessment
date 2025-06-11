@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status, HTTPException, Body
+from fastapi import APIRouter, Depends, status, HTTPException, Body, Query
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
@@ -9,7 +9,7 @@ from app.database.connection import get_session
 from app.schemas import QuestionCreateForm, QuestionResponse, \
     AnswerCreateForm, AnswerResponse, AnswerOptionsToQuestion, \
     UserAnswerForm, CorrectAnswers, QuestionUpdateForm, QuestionID, \
-    AnswerID, AnswerUpdateForm
+    AnswerID, AnswerUpdateForm, QuizResponse, AIQuestionCreateForm
 
 from app.utils.question import (
     add_question,
@@ -21,6 +21,8 @@ from app.utils.question import (
     remove_question,
     edit_answer,
     remove_answer,
+    get_quiz_utils,
+    add_ai_question,
 )
 
 
@@ -42,6 +44,24 @@ async def create_question(question: Annotated[QuestionCreateForm, Body()],
                           current_user: Annotated[User, Depends(get_current_user)],
                           session: Annotated[AsyncSession, Depends(get_session)]) -> None:
     is_success = await add_question(question, answers, current_user, session)
+
+    if is_success:
+        return {"message": "Question created"}
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, \
+                        detail="Error creating question")
+
+
+@api_router.post('/create_ai_question',
+            status_code=status.HTTP_200_OK,
+            responses={
+                     status.HTTP_401_UNAUTHORIZED: {
+                         "descriprion": "Non authorized"
+                     }
+                 })
+async def create_ai_question(question: Annotated[AIQuestionCreateForm, Body()],
+                          current_user: Annotated[User, Depends(get_current_user)],
+                          session: Annotated[AsyncSession, Depends(get_session)]) -> None:
+    is_success = await add_ai_question(question, current_user, session)
 
     if is_success:
         return {"message": "Question created"}
@@ -167,3 +187,16 @@ async def delete_answer(answer: AnswerID,
         return {"message": "Answer deletead"}
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, \
                         detail="Error delete answer")
+
+
+@api_router.get('/get_quiz',
+            status_code=status.HTTP_200_OK,
+            responses={
+                     status.HTTP_401_UNAUTHORIZED: {
+                         "descriprion": "Non authorized"
+                     }
+                 })
+async def get_quiz(session: Annotated[AsyncSession, Depends(get_session)],
+                   count: int = Query(..., alias="n", gt=0, le=100),
+                   ai_count: int = Query(..., alias="k", gt=0, le=100)) -> QuizResponse:
+    return await get_quiz_utils(session, count, ai_count)
