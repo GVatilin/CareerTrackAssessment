@@ -3,20 +3,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import delete, func
 from sqlalchemy.orm import selectinload
-from collections import defaultdict
-from typing import List
 from uuid import UUID
 
 
 from app.database.models import Question, User, Answer, AIQuestion, Topic
 from app.schemas import QuestionCreateForm, AnswerCreateForm, \
-    AnswerOptionsToQuestion, UserAnswerForm, CorrectAnswers, \
-    QuestionUpdateForm, AnswerUpdateForm, \
-    QuizResponse, AIQuestionCreateForm, QuestionQuizResponse, AnswerQuizResponse, \
-    QuizSubmission
+    UserAnswerForm, CorrectAnswers, \
+    QuestionUpdateForm, AnswerUpdateForm, QuizResponse, \
+    AIQuestionCreateForm, QuizSubmission
 
 
-async def add_question(question: QuestionCreateForm, answers: list[AnswerCreateForm], current_user: User, session: AsyncSession):
+async def add_question(question: QuestionCreateForm, answers: list[AnswerCreateForm], 
+                       current_user: User, session: AsyncSession):
     question = question.model_dump()
     question["author_id"] = current_user.id
     question = Question(**question)
@@ -38,7 +36,8 @@ async def add_question(question: QuestionCreateForm, answers: list[AnswerCreateF
     return True
 
 
-async def add_ai_question(question: AIQuestionCreateForm, current_user: User, session: AsyncSession):
+async def add_ai_question(question: AIQuestionCreateForm, current_user: User, 
+                          session: AsyncSession):
     question = question.model_dump()
     question["author_id"] = current_user.id
     question = AIQuestion(**question)
@@ -70,10 +69,10 @@ async def get_all_ai_questions(session: AsyncSession):
     return result.all()
 
 
-async def get_answers_to_question(response: AnswerOptionsToQuestion, 
+async def get_answers_to_question(question_id: UUID, 
                                   current_user: User, 
                                   session: AsyncSession):
-    query = select(Answer).where(Answer.question_id == response.question_id)
+    query = select(Answer).where(Answer.question_id == question_id)
     result = await session.scalars(query)
     return result.all()
 
@@ -164,7 +163,8 @@ async def remove_answer(answer_id: UUID, session: AsyncSession):
     return True
 
 
-async def get_quiz_utils(session: AsyncSession, count: int, ai_count: int, topic_id: UUID, chapter_id: UUID) -> QuizResponse:
+async def get_quiz_utils(session: AsyncSession, count: int, ai_count: int, 
+                         topic_id: UUID, chapter_id: UUID) -> QuizResponse:
     if (topic_id is None and chapter_id is None) or (
         topic_id is not None and chapter_id is not None
         ):

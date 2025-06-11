@@ -3,6 +3,7 @@ from uuid import UUID
 from typing import List
 
 
+#  -------------Creating------------------
 class QuestionCreateForm(BaseModel):
     """
     Форма создания Question с выбором вариантов ответов
@@ -11,6 +12,14 @@ class QuestionCreateForm(BaseModel):
     type: int
     topic_id: UUID
     explanation: str
+
+
+class AnswerCreateForm(BaseModel):
+    """
+    Форма создания варианта ответа для Question
+    """ 
+    text: str
+    is_correct: bool
 
 
 class AIQuestionCreateForm(BaseModel):
@@ -22,6 +31,7 @@ class AIQuestionCreateForm(BaseModel):
     explanation: str
 
 
+# --------------Response-----------------
 class QuestionResponse(BaseModel):
     id: UUID
     description: str 
@@ -39,14 +49,6 @@ class AIQuestionDebug(BaseModel):
     topic_id: UUID
 
 
-class AnswerCreateForm(BaseModel):
-    """
-    Форма создания варианта ответа для Question
-    """ 
-    text: str
-    is_correct: bool
-
-
 class AnswerResponse(BaseModel):
     id: UUID
     text: str
@@ -54,13 +56,28 @@ class AnswerResponse(BaseModel):
     question_id: UUID
 
 
-class AnswerOptionsToQuestion(BaseModel):
+#  -------------Update--------------------
+class QuestionUpdateForm(BaseModel):
     """
-    Форма для возврата всех вариантов ответа к конкретному Question
+    Форма для изменения Question
     """
-    question_id: UUID
+    id: UUID
+    description: str 
+    type: int
+    topic_id: UUID
+    explanation: str
 
 
+class AnswerUpdateForm(BaseModel):
+    """
+    Форма для изменения Answer
+    """
+    id: UUID
+    text: str 
+    is_correct: bool
+
+
+#  -----------Check User answers--------------
 class UserAnswerForm(BaseModel):
     """
     Форма для проверки выбранных пользователем вариантов ответа
@@ -85,26 +102,7 @@ class CorrectAnswers(BaseModel):
     correct_answer_id: list[UUID]
 
 
-class QuestionUpdateForm(BaseModel):
-    """
-    Форма для изменения Question
-    """
-    id: UUID
-    description: str 
-    type: int
-    topic_id: UUID
-    explanation: str
-
-
-class AnswerUpdateForm(BaseModel):
-    """
-    Форма для изменения Answer
-    """
-    id: UUID
-    text: str 
-    is_correct: bool
-
-
+#  ------------Get Questions and Answers for Quiz--------------
 class AnswerQuizResponse(BaseModel):
     """
     Возвращает варианты ответа для вопроса в квизе
@@ -137,6 +135,7 @@ class AIQuestionQuizResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+#  ------------------Quiz----------------------
 class QuizResponse(BaseModel):
     """
     Возвращает квиз

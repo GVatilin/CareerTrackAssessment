@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, status, HTTPException, Body, Query, Path
-from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated, Optional
 from uuid import UUID
@@ -8,7 +7,7 @@ from uuid import UUID
 from app.utils.user import get_current_user, User
 from app.database.connection import get_session
 from app.schemas import QuestionCreateForm, QuestionResponse, \
-    AnswerCreateForm, AnswerResponse, AnswerOptionsToQuestion, \
+    AnswerCreateForm, AnswerResponse, \
     UserAnswerForm, CorrectAnswers, QuestionUpdateForm, \
     AnswerUpdateForm, QuizResponse, AIQuestionCreateForm, \
     QuizSubmission, AIQuestionDebug
@@ -106,17 +105,18 @@ async def get_ai_questions_debug(session: Annotated[AsyncSession, Depends(get_se
     return await get_all_ai_questions(session)
 
 
-@api_router.post('/get_answers_to_question',
+@api_router.get('/get_answers_to_question/{question_id}',
             status_code=status.HTTP_200_OK,
             responses={
                      status.HTTP_401_UNAUTHORIZED: {
                          "descriprion": "Non authorized"
                      }
                  })
-async def get_answers(response: AnswerOptionsToQuestion,
-                      current_user: Annotated[User, Depends(get_current_user)],
-                      session: Annotated[AsyncSession, Depends(get_session)]) -> list[AnswerResponse]:
-    return await get_answers_to_question(response, current_user, session)
+async def get_answers(current_user: Annotated[User, Depends(get_current_user)],
+                      session: Annotated[AsyncSession, Depends(get_session)],
+                      question_id: UUID = Path(..., description="Введите ID вопроса, чтобы получить варианты ответа")
+                      ) -> list[AnswerResponse]:
+    return await get_answers_to_question(question_id, current_user, session)
 
 
 @api_router.post('/check_user_answers',
