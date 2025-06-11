@@ -5,9 +5,10 @@ from sqlalchemy import delete, func
 from sqlalchemy.orm import selectinload
 from collections import defaultdict
 from typing import List
+from uuid import UUID
 
 
-from app.database.models import Question, User, Answer, AIQuestion
+from app.database.models import Question, User, Answer, AIQuestion, Topic
 from app.schemas import QuestionCreateForm, AnswerCreateForm, \
     AnswerOptionsToQuestion, UserAnswerForm, CorrectAnswers, \
     QuestionUpdateForm, QuestionID, AnswerUpdateForm, AnswerID, \
@@ -156,26 +157,34 @@ async def remove_answer(answer: AnswerID, session: AsyncSession):
     return True
 
 
-async def get_quiz_utils(session: AsyncSession, count: int, ai_count: int) -> QuizResponse:
-    query1 = (
-        select(Question)
-        .options(selectinload(Question.answers))
-        .order_by(func.random())
-        .limit(count)
-    )
-    result = await session.execute(query1)
-    questions = result.scalars().all()
+async def get_quiz_utils(session: AsyncSession, count: int, ai_count: int, topic_id: UUID, chapter_id: UUID) -> QuizResponse:
+    if (topic_id is None and chapter_id is None) or (
+        topic_id is not None and chapter_id is not None
+        ):
+        raise HTTPException(
+            404,
+            detail="Укажите либо topic_id, либо chapter_id, но не оба сразу"
+        )
+    
+    q1 = select(Question).options(selectinload(Question.answers))
+    q2 = select(AIQuestion)
+
+    if topic_id:
+        q1 = q1.where(Question.topic_id == topic_id)
+        q2 = q2.where(AIQuestion.topic_id == topic_id)
+    else:
+        q1 = q1.join(Question.topic).where(Topic.chapter_id == chapter_id)
+        q2 = q2.join(AIQuestion.topic).where(Topic.chapter_id == chapter_id)
+
+    q1 = q1.order_by(func.random()).limit(count)
+    res1 = await session.execute(q1)
+    questions = res1.scalars().all()
     if len(questions) < count:
         raise HTTPException(404, detail="Недостаточно обычных вопросов")
 
-    query3 = (
-        select(AIQuestion)
-        .order_by(func.random())
-        .limit(ai_count)
-    )
-
-    res3 = await session.execute(query3)
-    ai_questions = res3.scalars().all()
+    q2 = q2.order_by(func.random()).limit(ai_count)
+    res2 = await session.execute(q1)
+    ai_questions = res2.scalars().all()
     if len(ai_questions) < ai_count:
         raise HTTPException(404, detail="Недостаточно AI-вопросов")
     

@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, status, HTTPException, Body, Query
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Annotated
+from typing import Annotated, Optional
+from uuid import UUID
 
 
 from app.utils.user import get_current_user, User
@@ -198,5 +199,7 @@ async def delete_answer(answer: AnswerID,
                  })
 async def get_quiz(session: Annotated[AsyncSession, Depends(get_session)],
                    count: int = Query(..., alias="n", gt=0, le=100),
-                   ai_count: int = Query(..., alias="k", gt=0, le=100)) -> QuizResponse:
-    return await get_quiz_utils(session, count, ai_count)
+                   ai_count: int = Query(..., alias="k", gt=0, le=100),
+                   topic_id: Optional[UUID] = Query(None, description="ID темы (Topic)"),
+                   chapter_id: Optional[UUID] = Query(None, description="ID раздела (Chapter)"),) -> QuizResponse:
+    return await get_quiz_utils(session, count, ai_count, topic_id, chapter_id)
