@@ -644,6 +644,7 @@ onMounted(loadData)
 .btn--nav {
   background-color: #e6f8fc;
   color: #2d3748;
+  margin-top: -0.7rem;
 }
 .btn--nav:hover:not(:disabled) {
   background-color: #c4dee4;
@@ -666,7 +667,6 @@ onMounted(loadData)
   width:50%;                    /* такая же ширина, как у .btn--submit */
   padding:0px 0px;            /* такие же внутренние отступы */
   margin-top: 0.5rem;                     /* убираем все внешние отступы */
-  margin-bottom: -0.7rem;
 
   background:none;
   border:none;
