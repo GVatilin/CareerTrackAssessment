@@ -39,6 +39,16 @@ const routes = [
     component: () => import('../pages/textbook/index.vue')
   },
   {
+    path: '/quiz',
+    name: 'Quiz',
+    component: () => import('../pages/quiz/index.vue')
+  },
+  {
+    path: '/activity',
+    name: 'Activity',
+    component: () => import('../pages/activity/index.vue')
+  },
+  {
     path: '/auth/google/callback',
     name: 'Google Auth',
     component: () => import('../pages/google_redirect/index.vue')

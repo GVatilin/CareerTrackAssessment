@@ -1,126 +1,151 @@
 <template>
-  <div class="flex h-screen">
-    <!-- Sidebar -->
-    <aside class="w-1/4 bg-gray-100 p-4 overflow-y-auto">
-      <div v-for="chapter in chapters" :key="chapter.id" class="mb-4">
-        <h2 @click="toggleChapter(chapter.id)" class="font-bold cursor-pointer hover:text-blue-600">
-          {{ chapter.name }}
-        </h2>
-        <div v-if="isChapterOpen(chapter.id)" class="ml-4 mt-2">
-          <div v-for="topic in getTopicsByChapter(chapter.id)" :key="topic.id" class="mb-2">
-            <h3 @click="toggleTopic(topic.id)" class="font-semibold cursor-pointer hover:text-blue-500">
-              {{ topic.name }}
-            </h3>
-            <ul v-if="isTopicOpen(topic.id)" class="ml-4 mt-1 list-disc">
-              <li v-for="question in getQuestionsByTopic(topic.id)" :key="question.id">
-                <button @click="selectQuestion(question)" class="text-left hover:underline">
-                  {{ question.description }}
-                </button>
-              </li>
-            </ul>
+  <div class="app">
+    <NavBar :username="user.username" />
+
+    <div class="app__body">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div
+          v-for="chapter in chapters"
+          :key="chapter.id"
+          class="sidebar__chapter"
+        >
+          <h2 @click="toggleChapter(chapter.id)" class="sidebar__chapter-title">
+            {{ chapter.name }}
+          </h2>
+          <div v-if="isChapterOpen(chapter.id)" class="sidebar__topics">
+            <div
+              v-for="topic in getTopicsByChapter(chapter.id)"
+              :key="topic.id"
+              class="sidebar__topic"
+            >
+              <h3 @click="toggleTopic(topic.id)" class="sidebar__topic-title">
+                {{ topic.name }}
+              </h3>
+              <ul
+                v-if="isTopicOpen(topic.id)"
+                class="sidebar__questions"
+              >
+                <li
+                  v-for="question in getQuestionsByTopic(topic.id)"
+                  :key="question.id"
+                  class="sidebar__question"
+                >
+                  <button
+                    @click="selectQuestion(question)"
+                    class="sidebar__question-btn"
+                  >
+                    {{ question.description }}
+                  </button>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
-      </div>
-    </aside>
+      </aside>
 
-    <!-- Main content -->
-    <main class="flex-1 p-8">
-      <div v-if="selectedQuestion">
-        <h2 class="text-2xl font-bold mb-4">
-          {{ selectedQuestion.description }}
-        </h2>
+      <!-- Main content -->
+      <main class="main">
+        <div v-if="selectedQuestion" class="question">
+          <h2 class="question__title">
+            {{ selectedQuestion.description }}
+          </h2>
 
-        <!-- Answers -->
-        <ul v-if="answers.length" class="space-y-2">
-          <li
-            v-for="answer in answers"
-            :key="answer.id"
-            :class="{
-              'bg-green-100': correctAnswers?.includes(answer.id),
-              'bg-red-100': userAnswers?.includes(answer.id) && !correctAnswers?.includes(answer.id)
-            }"
-            class="p-2 rounded"
-          >
-            <label class="inline-flex items-center space-x-2">
-              <!-- Single vs Multiple choice -->
-              <input
-                v-if="selectedQuestion.type === 0"
-                type="radio"
-                :value="answer.id"
-                v-model="selectedAnswer"
-                class="form-radio"
-                :disabled="resultStatus !== null"
-              />
-              <input
-                v-else
-                type="checkbox"
-                :value="answer.id"
-                v-model="selectedAnswers"
-                class="form-checkbox"
-                :disabled="resultStatus !== null"
-              />
-              <span>{{ answer.text }}</span>
-            </label>
-          </li>
-        </ul>
-        <div v-else class="text-gray-500">Ответы не найдены.</div>
+          <ul v-if="answers.length" class="question__answers">
+            <li
+              v-for="answer in answers"
+              :key="answer.id"
+              :class="[
+                'question__answer',
+                correctAnswers?.includes(answer.id) && 'question__answer--correct',
+                userAnswers?.includes(answer.id) && !correctAnswers?.includes(answer.id) && 'question__answer--wrong'
+              ]"
+            >
+              <label class="question__label">
+                <input
+                  v-if="selectedQuestion.type === 0"
+                  class="question__input"
+                  type="radio"
+                  :value="answer.id"
+                  v-model="selectedAnswer"
+                  :disabled="resultStatus !== null"
+                />
+                <input
+                  v-else
+                  class="question__input"
+                  type="checkbox"
+                  :value="answer.id"
+                  v-model="selectedAnswers"
+                  :disabled="resultStatus !== null"
+                />
+                <span>{{ answer.text }}</span>
+              </label>
+            </li>
+          </ul>
+          <p v-else class="question__empty">Ответы не найдены.</p>
 
-        <!-- Submit Button -->
-        <button
-          @click="submitAnswers"
-          class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          :disabled="resultStatus !== null ||
-                     (selectedQuestion.type === 0 && !selectedAnswer) ||
-                     (selectedQuestion.type !== 0 && !selectedAnswers.length)"
-        >
-          Ответить
-        </button>
+          <div class="question__actions">
+            <button
+              @click="submitAnswers"
+              class="btn btn--submit"
+              :disabled="
+                resultStatus !== null ||
+                (selectedQuestion.type === 0 && !selectedAnswer) ||
+                (selectedQuestion.type !== 0 && !selectedAnswers.length)
+              "
+            >
+              Ответить
+            </button>
 
-        <!-- Result Message -->
-        <p v-if="resultStatus !== null" class="mt-4 text-lg font-semibold"
-           :class="resultStatus ? 'text-green-600' : 'text-red-600'">
-          {{ resultMessage }}
-        </p>
+            <p
+              v-if="resultStatus !== null"
+              class="question__result"
+              :class="resultStatus ? 'question__result--correct' : 'question__result--wrong'"
+            >
+              {{ resultMessage }}
+            </p>
 
-        <!-- Reset Button -->
-        <button
-          v-if="resultStatus !== null"
-          @click="resetQuestion"
-          class="mt-2 px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">
-          Ответить ещё раз
-        </button>
+            <button
+              v-if="resultStatus !== null"
+              @click="resetQuestion"
+              class="btn btn--reset"
+            >
+              Ответить ещё раз
+            </button>
+          </div>
 
-        <!-- Navigation Buttons -->
-        <div class="mt-6 flex justify-between">
-          <button
-            @click="prevQuestion"
-            :disabled="!hasPrev"
-            class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 disabled:opacity-50"
-          >
-            Prev
-          </button>
-          <button
-            @click="nextQuestion"
-            :disabled="!hasNext"
-            class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 disabled:opacity-50"
-          >
-            Next
-          </button>
+          <div class="question__nav">
+            <button
+              @click="prevQuestion"
+              :disabled="!hasPrev"
+              class="btn btn--nav"
+            >
+              Prev
+            </button>
+            <button
+              @click="nextQuestion"
+              :disabled="!hasNext"
+              class="btn btn--nav"
+            >
+              Next
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div v-else class="text-gray-500">
-        <p>Выберите вопрос слева, чтобы начать тест.</p>
-      </div>
-    </main>
+        <div v-else class="main__placeholder">
+          Выберите вопрос слева, чтобы начать тест.
+        </div>
+      </main>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
+import NavBar from "../../components/NavBar.vue";
 
-
+const user = ref({ username: "Loading..." });
 const chapters = ref([])
 const topics = ref([])
 const questions = ref([])
@@ -160,6 +185,9 @@ const getUser = async () => {
   }
 }
 
+const fetchUser = async () => {
+  user.value = await getUser();
+};
 
 const fetchChapters = () =>
   axios.get(
@@ -202,6 +230,7 @@ const loadData = async () => {
       fetchTopics(),
       fetchQuestions(),
       getUser(),
+      fetchUser(),
     ])
 
     chapters.value = chapRes.data
@@ -358,43 +387,185 @@ onMounted(loadData)
 </script>
 
 <style scoped>
-.flex {
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;400;500;700&display=swap');
+
+.app {
   display: flex;
-}
-.h-screen {
+  flex-direction: column;
   height: 100vh;
+  font-family: 'Inter', sans-serif;
 }
-.w-1\/4 {
-  width: 25%;
+
+.app__body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
 }
-.bg-gray-100 {
-  background-color: #f7fafc;
-}
-.p-4 {
-  padding: 1rem;
-}
-.p-8 {
-  padding: 2rem;
-}
-.overflow-y-auto {
+.sidebar {
+  width: 260px;
+  background-color: #f0f8fa;
+  padding: 24px;
   overflow-y: auto;
 }
-.cursor-pointer {
+.main {
+  flex: 1;
+  padding: 32px;
+  overflow-y: auto;
+}
+
+/* --- Sidebar --- */
+.sidebar__chapter + .sidebar__chapter {
+  margin-top: 16px;
+}
+.sidebar__chapter-title {
+  font-size: 18px;
+  font-weight: 700;
   cursor: pointer;
 }
-.font-bold {
-  font-weight: 700;
-}
-.font-semibold {
-  font-weight: 600;
-}
-.hover\:text-blue-600:hover {
+.sidebar__chapter-title:hover {
   color: #3182ce;
 }
-.hover\:text-blue-500:hover {
+.sidebar__topics {
+  margin-top: 8px;
+  padding-left: 12px;
+}
+.sidebar__topic + .sidebar__topic {
+  margin-top: 12px;
+}
+.sidebar__topic-title {
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.sidebar__topic-title:hover {
   color: #4299e1;
 }
-.hover\:underline:hover {
+.sidebar__questions {
+  margin-top: 4px;
+  padding-left: 16px;
+  list-style-type: disc;
+}
+.sidebar__question {
+  margin-bottom: 6px;
+}
+.sidebar__question-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: left;
+}
+.sidebar__question-btn:hover {
   text-decoration: underline;
 }
+
+/* --- Question Panel --- */
+.question {
+  max-width: 600px;
+  margin: 0 auto;
+}
+.question__title {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 24px;
+}
+.question__answers {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.question__answer {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  background-color: #fff;
+  border: 1px solid #ddd;
+}
+.question__answer--correct {
+  background-color: #e6fffa;
+  border-color: #81e6d9;
+}
+.question__answer--wrong {
+  background-color: #ffe6e6;
+  border-color: #fc8181;
+}
+.question__label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+.question__input {
+  transform: scale(1.2);
+}
+
+/* --- Actions & Navigation --- */
+.question__actions {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.btn {
+  padding: 10px 20px;
+  font-size: 14px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn--submit {
+  background-color: #3182ce;
+  color: #fff;
+}
+.btn--submit:hover:not(:disabled) {
+  background-color: #2b6cb0;
+}
+.btn--reset {
+  background-color: #edf2f7;
+  color: #2d3748;
+}
+.btn--reset:hover {
+  background-color: #e2e8f0;
+}
+
+.question__result {
+  font-size: 16px;
+  font-weight: 600;
+}
+.question__result--correct {
+  color: #2f855a;
+}
+.question__result--wrong {
+  color: #c53030;
+}
+
+.question__nav {
+  margin-top: 32px;
+  display: flex;
+  justify-content: space-between;
+}
+.btn--nav {
+  background-color: #edf2f7;
+  color: #2d3748;
+}
+.btn--nav:hover:not(:disabled) {
+  background-color: #e2e8f0;
+}
+
+.main__placeholder {
+  font-size: 16px;
+  color: #718096;
+}
+.question__empty {
+  color: #718096;
+  font-size: 14px;
+}
+
 </style>
