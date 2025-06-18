@@ -1,5 +1,11 @@
 <template>
     <header class="header">
+        <div class="app__logo-container">
+            <router-link to="/" class="nav-link">
+                <img src="../../public/ppr_logo.png" alt="Logo" class="app__logo" />
+            </router-link>
+            </div>
+
         <nav class="app__nav">
         <ul class="app__tabs">
             <li class="app__tab">
@@ -37,17 +43,33 @@ const props = defineProps({
 
 </script>
 
+
 <style scoped>
 .header {
+  position: relative;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  background-color: #e6f8fc;
+  background-color: #ffffff;
   padding: 0 24px;
-  height: 64px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  height: 4rem;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
   font-size: 1.1rem;
   font-weight: 400;
+  z-index: 2;
+}
+
+/* Logo absolutely positioned */
+.app__logo-container {
+  position: absolute;
+  left: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.app__logo {
+  height: 2.5rem;
+  width: auto;
 }
 
 .app__nav {
@@ -70,21 +92,24 @@ const props = defineProps({
   cursor: pointer;
 }
 
-.app__tab:not(:last-child)::after {
-  display: none;
-}
-
 .app__tab:not(:first-child) {
   border-left: 1px solid #ccc;
 }
+
 .app__tab:hover {
   color: #3182ce;
 }
+
 .app__tab--active {
   color: #3182ce;
   border-bottom: 2px solid #3182ce;
 }
+
 .app__profile {
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -103,10 +128,9 @@ const props = defineProps({
   gap: 12px;
   text-decoration: none;
   color: inherit;
-  cursor: pointer;
 }
 
 .active-link {
-    color: #3182ce
+  color: #3182ce;
 }
 </style>

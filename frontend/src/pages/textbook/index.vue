@@ -3,8 +3,22 @@
     <NavBar :username="user.username" />
 
     <div class="app__body">
+      <button class="sidebar-toggle" @click="toggleSidebar"
+      :class="showSidebar ? 'sidebar-toggle--visible' : 'sidebar-toggle--hidden'">
+        <svg v-if="showSidebar" width="12" height="12" viewBox="0 0 8 8">
+          <!-- «<=»-стрелка — указываем влево -->
+          <path d="M6,0 L2,4 L6,8" stroke="#333" fill="none" stroke-width="1"/>
+        </svg>
+        <svg v-else width="12" height="12" viewBox="0 0 8 8">
+          <!-- «=>»-стрелка — указываем вправо -->
+          <path d="M2,0 L6,4 L2,8" stroke="#333" fill="none" stroke-width="1"/>
+        </svg>
+      </button>
+
       <!-- Sidebar -->
-      <aside class="sidebar">
+      <aside
+        :class="['sidebar', { 'sidebar--hidden': !showSidebar }]"
+      >
         <div
           v-for="chapter in chapters"
           :key="chapter.id"
@@ -86,48 +100,46 @@
 
           <div class="question__actions">
             <button
-              @click="submitAnswers"
-              class="btn btn--submit"
-              :disabled="
-                resultStatus !== null ||
-                (selectedQuestion.type === 0 && !selectedAnswer) ||
-                (selectedQuestion.type !== 0 && !selectedAnswers.length)
-              "
+              @click="resultStatus === null ? submitAnswers() : resetQuestion()"
+              :class="['btn', resultStatus === null ? 'btn--submit' : 'btn--reset']"
+              :disabled="resultStatus === null
+                ? (selectedQuestion.type === 0 && !selectedAnswer) ||
+                  (selectedQuestion.type !== 0 && !selectedAnswers.length)
+                : false"
             >
-              Ответить
+              {{ resultStatus === null ? 'Ответить' : 'Ответить ещё раз' }}
             </button>
 
-            <p
-              v-if="resultStatus !== null"
-              class="question__result"
-              :class="resultStatus ? 'question__result--correct' : 'question__result--wrong'"
-            >
-              {{ resultMessage }}
-            </p>
-
             <button
-              v-if="resultStatus !== null"
-              @click="resetQuestion"
-              class="btn btn--reset"
+              class="btn btn--show-answer"
+              @click="toggleExplanation"
             >
-              Ответить ещё раз
+              <svg width="16" height="16" viewBox="0 0 24 24">
+                <line x1="4" y1="8" x2="12" y2="16" stroke="#333" stroke-width="2" />
+                <line x1="20" y1="8" x2="12" y2="16" stroke="#333" stroke-width="2" />
+              </svg>
+              <span>{{ showExplanation ? 'Скрыть ответ' : 'Показать ответ' }}</span>
             </button>
           </div>
 
+          <div v-if="showExplanation" class="question__explanation">
+            {{ selectedQuestion.explanation }}
+          </div>
+          
           <div class="question__nav">
             <button
               @click="prevQuestion"
               :disabled="!hasPrev"
               class="btn btn--nav"
             >
-              Prev
+              Предыдущий вопрос
             </button>
             <button
               @click="nextQuestion"
               :disabled="!hasNext"
               class="btn btn--nav"
             >
-              Next
+              Следующий вопрос
             </button>
           </div>
         </div>
@@ -161,6 +173,8 @@ const userAnswers = ref([])
 const correctAnswers = ref([])
 const resultStatus = ref(null)  // null = не проверено, true/false после проверки
 const resultMessage = ref('')
+const showSidebar = ref(true)  
+const showExplanation = ref(false)
 
 const getToken = () => {
   const token = localStorage.getItem('chronoJWTToken')
@@ -269,6 +283,7 @@ const isTopicOpen = id => openTopics.value.includes(id)
 const selectQuestion = async question => {
   selectedQuestion.value = question
   selectedAnswer.value = null
+  showExplanation.value = false
   await fetchAnswers(question.id)
 }
 
@@ -383,6 +398,14 @@ const resetQuestion = () => {
    resultMessage.value = ''
 }
 
+function toggleSidebar() {
+  showSidebar.value = !showSidebar.value
+}
+
+const toggleExplanation = () => {
+  showExplanation.value = !showExplanation.value
+}
+
 onMounted(loadData)
 </script>
 
@@ -397,20 +420,76 @@ onMounted(loadData)
 }
 
 .app__body {
+  position: relative;
   display: flex;
   flex: 1;
-  overflow: hidden;
+  overflow: visible;
+  background-color: #fff;
 }
+
+.sidebar--hidden {
+  visibility: hidden;
+}
+
+.sidebar-toggle {
+  position: absolute;
+  left: 260px;               /* ровно ширина sidebar */
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid #ddd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  padding: 0;
+}
+
+/* чуть больше «защиты» от клика по невидимому сайдбару */
+.sidebar--hidden .sidebar__chapter,
+.sidebar--hidden .sidebar__topic,
+.sidebar--hidden .sidebar__question-btn {
+  pointer-events: none;
+}
+
+.sidebar-toggle--visible {
+   left: 18.5rem;
+ }
+
+ /* скрытая (sidebar скрыт) */
+.sidebar-toggle--hidden {
+  left: 1rem;
+ }
+
+.sidebar-toggle {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1.5rem;
+  top: 3.5rem;
+}
+
+ .sidebar-toggle svg {
+   width: 24px;
+   height: 24px;
+ }
+
 .sidebar {
-  width: 260px;
-  background-color: #f0f8fa;
+  width: 17rem;
+  background-color: #e6f8fc;
   padding: 24px;
   overflow-y: auto;
 }
+
 .main {
   flex: 1;
   padding: 32px;
-  overflow-y: auto;
+  overflow: auto;
+  position: relative;
+  z-index: 1;
 }
 
 /* --- Sidebar --- */
@@ -462,8 +541,11 @@ onMounted(loadData)
 
 /* --- Question Panel --- */
 .question {
-  max-width: 600px;
-  margin: 0 auto;
+  position: fixed;
+  top: 4.5rem;
+  left: 50%;             /* центрируем по горизонтали */
+  transform: translateX(-50%);
+  width: 20vw;
 }
 .question__title {
   font-size: 24px;
@@ -508,11 +590,12 @@ onMounted(loadData)
   display: flex;
   flex-direction: column;
   gap: 12px;
+  align-items: flex-start;
 }
 .btn {
   padding: 10px 20px;
   font-size: 14px;
-  border-radius: 12px;
+  border-radius: 6px;
   border: none;
   cursor: pointer;
 }
@@ -521,18 +604,25 @@ onMounted(loadData)
   cursor: not-allowed;
 }
 .btn--submit {
-  background-color: #3182ce;
+  width: 50%;
+  align-self: flex-start;
+  background-color: #38a169;
   color: #fff;
 }
 .btn--submit:hover:not(:disabled) {
-  background-color: #2b6cb0;
+  background-color: #2f855a;
 }
 .btn--reset {
-  background-color: #edf2f7;
+  width: 50%;
+  align-self: flex-start;
+  background-color: #fff;
   color: #2d3748;
+  box-shadow: inset 0 0 0 2px #ccc;
+  box-sizing: border-box;
+  color: #8b8b8b;
 }
 .btn--reset:hover {
-  background-color: #e2e8f0;
+  background-color: #f7f7f7;
 }
 
 .question__result {
@@ -552,11 +642,11 @@ onMounted(loadData)
   justify-content: space-between;
 }
 .btn--nav {
-  background-color: #edf2f7;
+  background-color: #e6f8fc;
   color: #2d3748;
 }
 .btn--nav:hover:not(:disabled) {
-  background-color: #e2e8f0;
+  background-color: #c4dee4;
 }
 
 .main__placeholder {
@@ -568,4 +658,31 @@ onMounted(loadData)
   font-size: 14px;
 }
 
+.btn--show-answer{
+  display:flex;                 /* было inline-flex */
+  align-items:center;
+  gap:8px;                      /* расстояние между svg и текстом */
+
+  width:50%;                    /* такая же ширина, как у .btn--submit */
+  padding:0px 0px;            /* такие же внутренние отступы */
+  margin-top: 0.5rem;                     /* убираем все внешние отступы */
+  margin-bottom: -0.7rem;
+
+  background:none;
+  border:none;
+  cursor:pointer;
+  font-size:14px;
+  color:#2d3748;
+  text-align:left;              /* текст и иконка прижаты влево */
+}
+
+.question__explanation {
+  margin-top: 16px;
+  padding: 12px;
+  background-color: #f7fbfd;
+  border-radius: 8px;
+  border: 1px solid #c4dee4;
+  font-size: 14px;
+  line-height: 1.5;
+}
 </style>
