@@ -98,7 +98,7 @@ async def user_answers(response: UserAnswerForm,
         is_right = (user_ids == correct_ids)
 
     return CorrectAnswers(
-        is_correct=is_right,
+        is_user_right=is_right,
         correct_answer_id=list(correct_ids),
     )
 

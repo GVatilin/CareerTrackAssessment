@@ -221,9 +221,8 @@ const fetchAnswers = async questionId => {
   try {
     const token = getToken()
     console.log('JWT token is', token)
-    const { data } = await axios.post(
-      `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/question/get_answers_to_question`,
-      { question_id: questionId },
+    const { data } = await axios.get(
+      `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/question/get_answers_to_question/${questionId}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
