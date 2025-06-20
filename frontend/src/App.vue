@@ -9,6 +9,7 @@ export default {
 };
 </script>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;400;500;700&display=swap');
 html, body {
   margin: 0;
   padding: 0;
@@ -16,5 +17,6 @@ html, body {
   height: 100%;
   overflow-x: hidden; /* Предотвращает горизонтальную прокрутку */
   background-color: #f8f9fa; /* Убедитесь, что фон совпадает с фоном .content-container */
+  font-family: 'Inter', sans-serif;
 }
 </style>

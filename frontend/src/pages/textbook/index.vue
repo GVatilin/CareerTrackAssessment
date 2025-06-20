@@ -540,13 +540,10 @@ async function loadState(questionId) {
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;400;500;700&display=swap');
-
 .app {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  font-family: 'Inter', sans-serif;
 }
 
 .app__body {
