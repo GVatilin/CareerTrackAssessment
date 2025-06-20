@@ -215,7 +215,7 @@ const onSubmit = async () => {
 .question-page__wrapper {
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   width: 100%;
 }
