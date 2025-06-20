@@ -7,10 +7,14 @@ from uuid import UUID
 
 
 from app.database.models import Question, User, Answer, AIQuestion, Topic
+from app.config import get_settings
 from app.schemas import QuestionCreateForm, AnswerCreateForm, \
     UserAnswerForm, CorrectAnswers, \
     QuestionUpdateForm, AnswerUpdateForm, QuizResponse, \
     AIQuestionCreateForm, QuizSubmission
+from app.utils.ai_generation import check_ai_question_utils
+
+settings = get_settings()
 
 
 async def add_question(question: QuestionCreateForm, answers: list[AnswerCreateForm], 
@@ -229,11 +233,12 @@ async def submit_quiz_utils(submission: QuizSubmission, session: AsyncSession):
         ans['correct_answer_id'] = correct_ids
         correct_answers.append(ans)
 
-
-    ai_feedback = [
-        {"question_id": a.question_id, "text": a.text}
-        for a in (submission.ai_answers or [])
-    ]
+    ai_feedback = []
+    for qa in submission.ai_answers:
+        ans = {"question_id": qa.question_id, "text": ''}
+        res = await check_ai_question_utils(qa.question_id, qa.text, session, settings.API_KEY)
+        ans["text"] = res["feedback"]
+        ai_feedback.append(ans)
 
     total_mc = len(submission.answers)
     return {
