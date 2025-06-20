@@ -40,7 +40,7 @@ class QuestionResponse(BaseModel):
     explanation: str
     
 
-class AIQuestionDebug(BaseModel):
+class AIQuestionResponse(BaseModel):
     id: UUID
     description: str
     explanation: str
