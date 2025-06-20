@@ -878,6 +878,7 @@ async function loadState(questionId) {
   border: none;
   padding: 4px 0;
   cursor: pointer;
+  text-align: left;
 }
 
 .sidebar__chapter-title {
@@ -921,7 +922,8 @@ async function loadState(questionId) {
 
 /* Вопрос: ? */
 .sidebar__list--nested-2 .sidebar__question-title {
-  margin-left: 2em;
+  margin-left: 0 !important;
+  padding-left: 2px;
   color: #333;
 }
 .sidebar__question-title::before {
@@ -939,6 +941,15 @@ async function loadState(questionId) {
 }
 
 .sidebar__list--nested-2 {
-  padding-left: 0.5em;     /* сдвигает вправо и стрелку, и сам текст вопросов */
+  padding-left: 2em;     /* сдвигает вправо и стрелку, и сам текст вопросов */
 }
+.sidebar__chapter-title::before,
+.sidebar__topic-title::before,
+.sidebar__question-title::before {
+  display: inline-block;
+  width: 1em;         /* иконка занимает 1em */
+  margin-right: 0.3em;/* одинаковый отступ до текста */
+  transition: transform 0.2s;
+}
+
 </style>
