@@ -16,46 +16,52 @@
       </button>
 
       <!-- Sidebar -->
-      <aside
-        :class="['sidebar', { 'sidebar--hidden': !showSidebar }]"
-      >
-        <div
-          v-for="chapter in chapters"
-          :key="chapter.id"
-          class="sidebar__chapter"
-        >
-          <h2 @click="toggleChapter(chapter.id)" class="sidebar__chapter-title">
-            {{ chapter.name }}
-          </h2>
-          <div v-if="isChapterOpen(chapter.id)" class="sidebar__topics">
-            <div
-              v-for="topic in getTopicsByChapter(chapter.id)"
-              :key="topic.id"
-              class="sidebar__topic"
+      <aside :class="['sidebar', { 'sidebar--hidden': !showSidebar }]">
+        <ul class="sidebar__list">
+          <li v-for="chapter in chapters" :key="chapter.id">
+            <button
+              @click="toggleChapter(chapter.id)"
+              :class="[
+                'sidebar__chapter-title',
+                { 'is-open': isChapterOpen(chapter.id) }
+              ]"
             >
-              <h3 @click="toggleTopic(topic.id)" class="sidebar__topic-title">
-                {{ topic.name }}
-              </h3>
-              <ul
-                v-if="isTopicOpen(topic.id)"
-                class="sidebar__questions"
-              >
-                <li
-                  v-for="question in getQuestionsByTopic(topic.id)"
-                  :key="question.id"
-                  class="sidebar__question"
+              {{ chapter.name }}
+            </button>
+            <ul v-if="isChapterOpen(chapter.id)" class="sidebar__list sidebar__list--nested">
+              <li v-for="topic in getTopicsByChapter(chapter.id)" :key="topic.id">
+                <button
+                  @click="toggleTopic(topic.id)"
+                  :class="[
+                    'sidebar__topic-title',
+                    { 'is-open': isTopicOpen(topic.id) }
+                  ]"
                 >
-                  <button
-                    @click="selectQuestion(question)"
-                    class="sidebar__question-btn"
+                  {{ topic.name }}
+                </button>
+                <ul
+                  v-if="isTopicOpen(topic.id)"
+                  class="sidebar__list sidebar__list--nested sidebar__list--nested-2"
+                >
+                  <li
+                    v-for="question in getQuestionsByTopic(topic.id)"
+                    :key="question.id"
                   >
-                    {{ question.description }}
-                  </button>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
+                    <button
+                      @click="selectQuestion(question)"
+                      :class="[
+                        'sidebar__question-title',
+                        { 'is-active': selectedQuestion && selectedQuestion.id === question.id }
+                      ]"
+                    >
+                      {{ question.description }}
+                    </button>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+        </ul>
       </aside>
 
       <!-- Main content -->
@@ -118,17 +124,20 @@
           </div>
 
           <div class="question__actions">
-            <button
-              @click="resultStatus === null ? submitAnswers() : resetQuestion()"
-              :class="['btn', resultStatus === null ? 'btn--submit' : 'btn--reset']"
-              :disabled="resultStatus === null
-                ? (selectedQuestion.type === 0 && !selectedAnswer) ||
-                  (selectedQuestion.type === 1 && !selectedAnswers.length) ||
-                  (selectedQuestion.type === 2 && !aiResponse.trim())
-                : false"
-            >
-              {{ resultStatus === null ? 'Ответить' : 'Ответить ещё раз' }}
-            </button>
+            <div class="submit-group">
+              <button
+                @click="resultStatus === null ? submitAnswers() : resetQuestion()"
+                :class="['btn', resultStatus === null ? 'btn--submit' : 'btn--reset']"
+                :disabled="resultStatus === null
+                  ? (selectedQuestion.type === 0 && !selectedAnswer) ||
+                    (selectedQuestion.type === 1 && !selectedAnswers.length) ||
+                    (selectedQuestion.type === 2 && (!aiResponse.trim() || isAnalyzing))
+                  : false"
+              >
+                {{ resultStatus === null ? 'Ответить' : 'Ответить ещё раз' }}
+              </button>
+              <p v-if="isAnalyzing" class="analyzing-text">Анализируем ответ...</p>
+            </div>
 
             <button
               class="btn btn--show-answer"
@@ -198,6 +207,7 @@ const showExplanation = ref(false)
 const aiResponse   = ref('')
 const aiScore     = ref(null)   // 0 | 1 | 2
 const aiFeedback  = ref('')     // текст от сервера
+const isAnalyzing = ref(false)
 
 
 const getToken = () => {
@@ -331,6 +341,7 @@ const submitAnswers = async () => {
 
     if (selectedQuestion.value.type === 2) {
       /* AI-вопрос */
+      isAnalyzing.value = true
       const res = await axios.post(
         `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/question/check_ai_question`,
         {
@@ -371,6 +382,8 @@ const submitAnswers = async () => {
     saveState()
   } catch (err) {
     console.error('Ошибка при проверке ответов:', err)
+  } finally {
+    isAnalyzing.value = false
   }
 }
 
@@ -807,7 +820,7 @@ async function loadState(questionId) {
   min-height: 120px;
   padding: 8px;
   border: 1px solid #ccc;
-  border-radius: 4px;
+  border-radius: 8px;
   resize: vertical;
   max-height: 60vh;
   overflow-y: auto;
@@ -820,7 +833,7 @@ async function loadState(questionId) {
 }
 .ai-textarea--partial { 
   border: 2px solid #e49159; 
-  background-color: #dfb294;
+  background-color: #e6cab7;
 }
 .ai-textarea--wrong   { 
   border: 2px solid #fc8181; 
@@ -838,4 +851,97 @@ async function loadState(questionId) {
   color: #4a5568;
 }
 
+.submit-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%; 
+}
+
+.analyzing-text {
+  color: #9b9b9b; 
+  margin: 0;
+  margin-left: 0.5rem;
+  font-size: 1rem;
+}
+
+.sidebar__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* общий стиль для всех кнопок-элементов */
+.sidebar__chapter-title,
+.sidebar__topic-title,
+.sidebar__question-title {
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.sidebar__chapter-title {
+  font-size: 1.3rem;
+}
+
+.sidebar__topic-title {
+  font-size: 1rem;
+}
+
+.sidebar__question-title {
+  font-size: 0.9rem;
+}
+
+/* Глава: ➔ */
+.sidebar__chapter-title::before {
+  content: '➙';
+  display: inline-block;
+  width: 1em;
+  transition: transform 0.2s;
+  margin-right: 0.5em;
+}
+.sidebar__chapter-title.is-open::before {
+  transform: rotate(45deg);
+}
+
+/* Топик: ➙ */
+.sidebar__list--nested .sidebar__topic-title {
+  margin-left: 1em;
+}
+.sidebar__topic-title::before {
+  content: '➙';
+  display: inline-block;
+  width: 1em;
+  transition: transform 0.2s;
+  margin-right: 0.5em;
+}
+.sidebar__topic-title.is-open::before {
+  transform: rotate(45deg);
+}
+
+/* Вопрос: ? */
+.sidebar__list--nested-2 .sidebar__question-title {
+  margin-left: 2em;
+  color: #333;
+}
+.sidebar__question-title::before {
+  content: '?';
+  display: inline-block;
+  width: 1em;
+  color: #38a169; /* зелёный, как в скрине */
+}
+.sidebar__question-title.is-active {
+  color: #2f855a;
+  font-weight: 500;
+}
+.sidebar__question-title.is-active::before {
+  color: #2f855a;
+}
+
+.sidebar__list--nested-2 {
+  padding-left: 0.5em;     /* сдвигает вправо и стрелку, и сам текст вопросов */
+}
 </style>

@@ -20,12 +20,11 @@ async def check_ai_question_utils(question_id: UUID,
     url = ai_url
     headers = await get_headers(api_key)
 
-    query = select(AIQuestion.description, AIQuestion.explanation).where(AIQuestion.id == question_id)
+    query = select(AIQuestion.description).where(AIQuestion.id == question_id)
     res = await session.execute(query)
-    question = res.one_or_none()
-    question_description, question_explanation = question
+    question_description = res.one_or_none()
 
-    payload = await payload_check_ai_question(question_description, question_explanation, user_answer)
+    payload = await payload_check_ai_question(question_description, user_answer)
 
     async with aiohttp.ClientSession() as client:
         async with client.post(url, json=payload, headers=headers) as resp:

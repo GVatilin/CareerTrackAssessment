@@ -8,7 +8,6 @@ async def check_ai_question_text():
             "Если пользователь ответил частично правильно, ты возвращаешь score = 1, и свой feedback"
             "Если пользователь ответил неправильно ты возвращаешь score = 0, и свой feedback"
             "Оценивай не слишком строго. "
-            "Так же на вопрос может быть дано пояснение, если оно есть, учитывай его при оценке ответа"
             "Верни json объект { score: int, feedback: str ] }"
             )
 
@@ -20,7 +19,7 @@ async def get_headers(api_key):
     }
 
 
-async def payload_check_ai_question(description, explanation, answer):
+async def payload_check_ai_question(description, answer):
     return {
         "model": ai_model,
         "messages": [
@@ -30,7 +29,7 @@ async def payload_check_ai_question(description, explanation, answer):
             },
             {
                 "role": "user",
-                "content": f'Вопрос: {description}. Пояснение: {explanation}. Ответ пользователя: {answer}'
+                "content": f'Вопрос: {description}. Ответ пользователя: {answer}'
             },
         ],
     }
