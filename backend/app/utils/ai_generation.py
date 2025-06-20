@@ -40,3 +40,8 @@ async def check_ai_question_utils(question_id: UUID,
                     "score": int(ai_response["score"]),
                     "feedback": ai_response["feedback"]
                 }
+            else:
+                return {
+                    "score": 0,
+                    "feedback": f"check_error, status: {resp.status}"
+                }

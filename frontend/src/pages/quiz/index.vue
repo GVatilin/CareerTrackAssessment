@@ -123,9 +123,6 @@
             Вы ответили правильно:
             {{ result.correctCount }} из {{ result.totalMc }} ({{ result.scorePercent }}%)
           </h3>
-          <p v-if="result.aiReviewRequired">
-            AI‑проверка требуется для {{ result.aiReviewRequired }} ответ(а/ов)
-          </p>
           <p class="ai-review" v-if="result.aiReview">AI‑review: {{ result.aiReview }}</p>
         </div>
       </div>
