@@ -881,7 +881,7 @@ async function loadState(questionId) {
 }
 
 .sidebar__chapter-title {
-  font-size: 1.3rem;
+  font-size: 1.1rem;
 }
 
 .sidebar__topic-title {
