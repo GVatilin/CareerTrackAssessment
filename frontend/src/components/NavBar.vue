@@ -15,7 +15,7 @@
             <router-link to="/quiz" class="nav-link" active-class="active-link">Квизы</router-link>
             </li>
             <li class="app__tab">
-            <router-link to="/activity" class="nav-link" active-class="active-link">Активность</router-link>
+            <router-link to="/activity" class="nav-link" active-class="active-link">Создание заданий</router-link>
             </li>
         </ul>
         </nav>
