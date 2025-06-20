@@ -200,9 +200,14 @@ async def get_quiz_utils(session: AsyncSession, count: int, ai_count: int,
 
 async def submit_quiz_utils(submission: QuizSubmission, session: AsyncSession):
     correct_count = 0
-    total_mc = len(submission.answers)
+    correct_answers = []
 
     for qa in submission.answers:
+        ans = {
+            'question_id': qa.question_id,
+            'correct_answer_id': [],
+            'is_user_right': False,
+        }
         result = await session.execute(
             select(Answer.id).where(
                 Answer.question_id == qa.question_id,
@@ -214,10 +219,15 @@ async def submit_quiz_utils(submission: QuizSubmission, session: AsyncSession):
         user_ids = set(qa.selected_answer_id or [])
         question = await session.get(Question, qa.question_id)
 
+        tmp = correct_count
         if question.type == 0:
             correct_count += (len(user_ids) == 1 and next(iter(user_ids)) in correct_ids)
         else:
             correct_count += (user_ids == correct_ids)
+        if tmp < correct_count:
+            ans['is_user_right'] = True
+        ans['correct_answer_id'] = correct_ids
+        correct_answers.append(ans)
 
 
     ai_feedback = [
@@ -225,7 +235,9 @@ async def submit_quiz_utils(submission: QuizSubmission, session: AsyncSession):
         for a in (submission.ai_answers or [])
     ]
 
+    total_mc = len(submission.answers)
     return {
+        "answers": correct_answers,
         "total_mc": total_mc,
         "correct_mc": correct_count,
         "score_percent": round(correct_count / total_mc * 100, 2) if total_mc else 0.0,
