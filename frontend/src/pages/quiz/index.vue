@@ -1,180 +1,220 @@
 <template>
-<div>
-  <NavBar :username="user.username" />
-  <div class="quiz-layout">
-    <!-- ░░░ Sidebar ░░░ -->
-    <aside class="sidebar" v-if="topics.length">
-      <button class="back-btn" @click="goBack">←</button>
-      <h2 class="sidebar-title">Темы</h2>
-      <ul class="topics">
-        <li
-          v-for="t in topics"
-          :key="t.id"
-          :class="{ active: t.id === params.topic_id }"
-          @click="params.topic_id = t.id"
-        >
-          {{ t.name }}
-        </li>
-      </ul>
-    </aside>
-    
+  <div>
+    <!-- ░░░ Top navbar ░░░ -->
+    <NavBar :username="user.username" />
 
-    <!-- ░░░ Main content ░░░ -->
-    <main class="main-content">
-      <!-- Шаг 1: Настройка квиза -->
-      <div v-if="!quizStarted" class="card setup-card">
-        <h1 class="page-title">Создать квиз</h1>
+    <div class="quiz-layout">
+      <!-- ░░░ Sidebar: список глав ░░░ -->
+      <aside class="sidebar" v-if="chapters.length">
+        <button class="back-btn" @click="goBack">←</button>
+        <h2 class="sidebar-title">Главы</h2>
+        <ul class="topics">
+          <li
+            v-for="c in chapters"
+            :key="c.id"
+            :class="{ active: c.id === params.chapter_id }"
+            @click="selectChapter(c.id)"
+          >
+            {{ c.name }}
+          </li>
+        </ul>
+      </aside>
 
-        <div class="form-field">
-          <label>Тема</label>
-          <select v-model="params.topic_id">
-            <option v-for="t in topics" :key="t.id" :value="t.id">{{ t.name }}</option>
-          </select>
+      <!-- ░░░ Main content ░░░ -->
+      <main class="main-content">
+        <!-- Шаг 1: настройка квиза -->
+        <div v-if="!quizStarted" class="card setup-card">
+          <h1 class="page-title">Создать квиз</h1>
+
+          <!-- Выбор главы -->
+          <div class="form-field">
+            <label>Глава</label>
+            <select v-model="params.chapter_id">
+              <option :value="null">— Любая глава —</option>
+              <option v-for="c in chapters" :key="c.id" :value="c.id">{{ c.name }}</option>
+            </select>
+          </div>
+
+          <!-- Выбор темы (опционально, зависит от главы) -->
+          <div class="form-field" v-if="filteredTopics.length">
+            <label>Тема <span class="text-muted">(необязательно)</span></label>
+            <select v-model="params.topic_id">
+              <option :value="null">— Любая тема —</option>
+              <option v-for="t in filteredTopics" :key="t.id" :value="t.id">{{ t.name }}</option>
+            </select>
+          </div>
+
+          <!-- Настройка количества вопросов -->
+          <div class="form-field inline">
+            <label>Обычные вопросы</label>
+            <input type="number" v-model.number="params.n" min="0" />
+          </div>
+          <div class="form-field inline">
+            <label>AI‑проверяемые</label>
+            <input type="number" v-model.number="params.k" min="0" />
+          </div>
+          <!-- <div class="form-field inline">
+            <label>AI‑генерируемые</label>
+            <input type="number" v-model.number="params.ai_compose" min="0" />
+          </div> -->
+
+          <button
+            class="button-primary w-full"
+            @click="startQuiz"
+            :disabled="!params.chapter_id && !params.topic_id"
+          >
+            Начать квиз
+          </button>
         </div>
 
-        <div class="form-field inline">
-          <label>Обычные вопросы</label>
-          <input type="number" v-model.number="params.n" min="0" />
-        </div>
-        <div class="form-field inline">
-          <label>AI‑проверяемые</label>
-          <input type="number" v-model.number="params.k" min="0" />
-        </div>
-        <div class="form-field inline">
-          <label>AI‑генерируемые</label>
-          <input type="number" v-model.number="params.ai_compose" min="0" />
-        </div>
+        <!-- Шаг 2: прохождение -->
+        <div v-else class="card runner-card">
+          <div class="question-header">
+            <h2 class="question-title">Вопрос {{ currentIndex + 1 }} из {{ total }}</h2>
+          </div>
 
-        <button class="button-primary w-full" @click="startQuiz">Начать квиз</button>
-      </div>
+          <div class="question-body">
+            <p class="description" v-html="current.description"></p>
 
-      <!-- Шаг 2: Прохождение квиза -->
-      <div v-else class="card runner-card">
-        <div class="question-header">
-          <h2 class="question-title">Вопрос {{ currentIndex + 1 }} из {{ total }}</h2>
-        </div>
+            <!-- Варианты ответа -->
+            <template v-if="!current.ai">
+              <div
+                v-for="ans in current.answers"
+                :key="ans.id"
+                class="answer-option"
+                :class="{
+                  selected: isSelected(ans.id),
+                  correct: showResult && isCorrect(current.id, ans.id),
+                  incorrect: showResult && !isCorrect(current.id, ans.id),
+                }"
+              >
+                <label>
+                  <input
+                    :type="current.type === 1 ? 'checkbox' : 'radio'"
+                    :name="current.id"
+                    :value="ans.id"
+                    v-model="userAnswers[current.id]"
+                  />
+                  <span>{{ ans.text }}</span>
+                </label>
+              </div>
+            </template>
 
-        <div class="question-body">
-          <p class="description" v-html="current.description"></p>
+            <!-- AI‑вопрос (свободный ввод) -->
+            <template v-else>
+              <textarea
+                class="answer-input"
+                v-model="userAI[current.id]"
+                rows="4"
+                placeholder="Ваш ответ..."
+              ></textarea>
+            </template>
+          </div>
 
-          <!-- Ответы с вариантами -->
-          <template v-if="!current.ai">
-            <div
-              v-for="ans in current.answers"
-              :key="ans.id"
-              class="answer-option"
-              :class="{
-                selected: isSelected(ans.id),
-                correct: showResult && isCorrect(current.id, ans.id),
-                incorrect: showResult && !isCorrect(current.id, ans.id),
-              }"
-            >
-              <label>
-                <input
-                  :type="current.type === 1 ? 'checkbox' : 'radio'"
-                  :name="current.id"
-                  :value="ans.id"
-                  v-model="userAnswers[current.id]"
-                />
-                <span>{{ ans.text }}</span>
-              </label>
-            </div>
-          </template>
-
-          <!-- AI‑вопросы (свободный ввод) -->
-          <template v-else>
-            <textarea
-              class="answer-input"
-              v-model="userAI[current.id]"
-              rows="4"
-              placeholder="Ваш ответ..."
-            ></textarea>
-          </template>
-        </div>
-
-        <!-- Результат по текущему вопросу -->
-        <div v-if="showResult" class="result-section">
-          <p v-if="isQuestionRight(current.id)" class="success-message">Правильно!</p>
-          <p v-else class="error-message">Неправильно</p>
-
-          <div v-if="getExplanation(current.id)" class="explanation">
+          <!-- Результат по текущему вопросу -->
+          <div v-if="showResult" class="result-section">
+            <p v-if="isQuestionRight(current.id)" class="success-message">Правильно!</p>
+            <p v-else class="error-message">Неправильно</p>
+          </div>
+          <div v-if="showResult" class="result-section">
             <p>{{ getExplanation(current.id) }}</p>
           </div>
-        </div>
 
-        <!-- Навигация -->
-        <div class="nav-buttons">
-          <button class="button-ghost" @click="prev" :disabled="currentIndex === 0">
-            ← Назад
-          </button>
-          <button class="button-ghost" @click="next" :disabled="currentIndex >= total - 1">
-            Вперёд →
-          </button>
-        </div>
+          <!-- Навигация -->
+          <div class="nav-buttons">
+            <button class="button-ghost" @click="prev" :disabled="currentIndex === 0">← Назад</button>
+            <button class="button-ghost" @click="next" :disabled="currentIndex >= total - 1">Вперёд →</button>
+          </div>
 
-        <!-- Отправка результатов -->
-        <div v-if="currentIndex === total - 1 && !showResult" class="submit-area">
-          <button class="button-primary" @click="submit">Отправить</button>
-        </div>
+          <!-- Отправка результатов -->
+          <div v-if="currentIndex === total - 1 && !showResult" class="submit-area">
+            <button class="button-primary" @click="submit">Отправить</button>
+          </div>
 
-        <!-- Итоговый результат -->
-        <div v-if="currentIndex === total - 1 && showResult" class="final-result card mt-4">
-          <h3>
-            Вы ответили правильно:
-            {{ result.correctCount }} из {{ result.totalMc }} ({{ result.scorePercent }}%)
-          </h3>
-          <p class="ai-review" v-if="result.aiReview">AI‑review: {{ result.aiReview }}</p>
+          <!-- Итог -->
+          <div v-if="currentIndex === total - 1 && showResult" class="final-result card mt-4">
+            <h3>
+              Вы ответили правильно:
+              {{ result.correctCount }} из {{ result.totalMc }} ({{ result.scorePercent }}%)
+            </h3>
+            <p v-if="result.aiReviewRequired">
+              Требуется AI‑проверка: {{ result.aiReviewRequired }} ответ(а)
+            </p>
+            <p class="ai-review" v-if="result.aiReview">AI‑review: {{ result.aiReview }}</p>
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </div>
   </div>
-</div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
-import NavBar from '../../components/NavBar.vue'
+import NavBar from '@/components/NavBar.vue'
 
-// ░░░ Список тем ░░░
-const topics = ref([])
-const user = ref({ username: "Loading..." })
+// ░░░ Пользователь (для NavBar) ░░░
+const user = ref({ username: 'Loading…' })
 
-const getUser = async () => {
+async function fetchUser() {
   try {
-    const token = getToken()
-    const { data } = await axios.get(
-      `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/user/me`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-    )
-    return data
+    const { data } = await axios.get(`http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/user/me`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    })
+    user.value = data
   } catch {
-    return -1
+    user.value.username = 'Guest'
   }
 }
 
-const fetchUser = async () => {
-  user.value = await getUser();
-};
+// ░░░ Данные ░░░
+const chapters = ref([])
+const topics = ref([])
 
 // ░░░ Параметры квиза ░░░
-const params = reactive({ n: 5, k: 3, ai_compose: 2, topic_id: null })
-
-onMounted(async () => {
-  await fetchUser()
-  const { data } = await axios.get(`http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/topic/get_topics`)
-  topics.value = data
-  if (data.length) params.topic_id = data[0].id
+const params = reactive({
+  n: 5,
+  k: 3,
+  ai_compose: 2,
+  chapter_id: null,
+  topic_id: null,
 })
 
+// ░░░ Получаем главы и темы ░░░
+onMounted(async () => {
+  await fetchUser()
+  const base = `http://${process.env.VUE_APP_BACKEND_URL}:8080`
+  const [chapRes, topRes] = await Promise.all([
+    axios.get(`${base}/api/v1/topic/get_chapters`),
+    axios.get(`${base}/api/v1/topic/get_topics`),
+  ])
+  chapters.value = chapRes.data
+  topics.value = topRes.data
+})
+
+// ░░░ Выбор главы ░░░
+function selectChapter(id) {
+  params.chapter_id = id
+  params.topic_id = null
+}
+
+watch(
+  () => params.chapter_id,
+  () => {
+    params.topic_id = null
+  }
+)
+
+// ░░░ Список тем, фильтрованных по главе ░░░
+const filteredTopics = computed(() => {
+  if (!params.chapter_id) return topics.value
+  return topics.value.filter(t => t.chapter_id === params.chapter_id)
+})
+
+// ░░░ Состояния квиза ░░░
 const quizStarted = ref(false)
 const questions = ref([])
 const currentIndex = ref(0)
-
 const userAnswers = reactive({})
 const userAI = reactive({})
 
@@ -185,27 +225,32 @@ const result = reactive({
   scorePercent: 0,
   aiReview: '',
   aiReviewRequired: 0,
-  answers: [],
+  answers: {},
 })
 
 const total = computed(() => questions.value.length)
 const current = computed(() => questions.value[currentIndex.value] || {})
 
 function goBack() {
-  window.history.length > 1 ? window.history.back() : console.log('no history')
+  window.history.length > 1 && window.history.back()
 }
 
+// ░░░ Старт квиза ░░░
 async function startQuiz() {
-  const p = { n: params.n, k: params.k, topic_id: params.topic_id }
+  const base = `http://${process.env.VUE_APP_BACKEND_URL}:8080`
+  const p = { n: params.n, k: params.k }
+  if (params.chapter_id) p.chapter_id = params.chapter_id
+  if (params.topic_id) p.topic_id = params.topic_id
   if (params.ai_compose) p.ai_compose = params.ai_compose
 
-  const { data } = await axios.get(`http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/question/quiz/get`, { params: p })
+  const { data } = await axios.get(`${base}/api/v1/question/quiz/get`, { params: p })
   const qs = [
     ...data.questions.map(q => ({ ...q, ai: false })),
     ...data.ai_questions.map(q => ({ ...q, ai: true })),
   ]
   questions.value = qs
   quizStarted.value = true
+  console.log(qs)
 
   qs.forEach(q => {
     if (q.ai) userAI[q.id] = ''
@@ -213,6 +258,7 @@ async function startQuiz() {
   })
 }
 
+// ░░░ Навигация ░░░
 function next() {
   if (currentIndex.value < total.value - 1) currentIndex.value++
 }

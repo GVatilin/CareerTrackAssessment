@@ -169,12 +169,10 @@ async def remove_answer(answer_id: UUID, session: AsyncSession):
 
 async def get_quiz_utils(session: AsyncSession, count: int, ai_count: int, 
                          topic_id: UUID, chapter_id: UUID) -> QuizResponse:
-    if (topic_id is None and chapter_id is None) or (
-        topic_id is not None and chapter_id is not None
-        ):
+    if (topic_id is None and chapter_id is None) or (topic_id is None):
         raise HTTPException(
             404,
-            detail="Укажите либо topic_id, либо chapter_id, но не оба сразу"
+            detail="Укажите либо chapter_id и topic_id, либо chapter_id"
         )
     
     q1 = select(Question).options(selectinload(Question.answers))
@@ -194,7 +192,7 @@ async def get_quiz_utils(session: AsyncSession, count: int, ai_count: int,
         raise HTTPException(404, detail="Недостаточно обычных вопросов")
 
     q2 = q2.order_by(func.random()).limit(ai_count)
-    res2 = await session.execute(q1)
+    res2 = await session.execute(q2)
     ai_questions = res2.scalars().all()
     if len(ai_questions) < ai_count:
         raise HTTPException(404, detail="Недостаточно AI-вопросов")
@@ -235,12 +233,17 @@ async def submit_quiz_utils(submission: QuizSubmission, session: AsyncSession):
 
     ai_feedback = []
     for qa in submission.ai_answers:
-        ans = {"question_id": qa.question_id, "text": ''}
+        ans = {"question_id": qa.question_id}
         res = await check_ai_question_utils(qa.question_id, qa.text, session, settings.API_KEY)
-        ans["text"] = res["feedback"]
+        ans["text"] = qa.text
+        ans["explanation"] = res["feedback"]
+        ans["is_user_right"] = (res["score"] > 0)
+        correct_count += (res["score"] > 0)
         ai_feedback.append(ans)
+        correct_answers.append(ans)
 
-    total_mc = len(submission.answers)
+
+    total_mc = len(submission.answers) + len(submission.ai_answers)
     return {
         "answers": correct_answers,
         "total_mc": total_mc,
