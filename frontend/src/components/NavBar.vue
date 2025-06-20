@@ -15,7 +15,7 @@
             <router-link to="/quiz" class="nav-link" active-class="active-link">Квизы</router-link>
             </li>
             <li class="app__tab">
-            <router-link to="/activity" class="nav-link" active-class="active-link">Создание заданий</router-link>
+            <router-link to="/activity" class="nav-link" active-class="active-link">Добавить вопросы</router-link>
             </li>
         </ul>
         </nav>
@@ -24,7 +24,12 @@
             <span class="app__username">{{ props.username }}</span>
         </router-link>
         <router-link to="/profile" class="nav-link">
-            <div class="app__avatar"></div>
+            <img
+            :src="avatarUrl"
+            alt="User Avatar"
+            class="app__avatar"
+            @click="triggerFileInput"
+          />
         </router-link>
         </div>
     </header>
@@ -32,7 +37,8 @@
 
 
 <script setup>
-import { defineProps } from 'vue'
+import { defineProps, ref, onMounted } from 'vue'
+import axios from 'axios'
 
 const props = defineProps({
   username: {
@@ -41,6 +47,35 @@ const props = defineProps({
   }
 })
 
+const avatarUrl = ref(null)
+
+const fetchAvatar = async () => {
+  try {
+    const token = getToken()
+    const response = await axios.get(
+      `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/file/get`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      }
+    )
+    avatarUrl.value = URL.createObjectURL(response.data)
+  } catch (err) {
+    console.error('Error fetching avatar:', err)
+    avatarUrl.value = null
+  }
+}
+
+const getToken = () => {
+  const token = localStorage.getItem('chronoJWTToken')
+  if (!token) throw new Error('Token is missing. Please log in.')
+  return token
+}
+
+
+onMounted(async () => {
+  await fetchAvatar()
+})
 </script>
 
 
