@@ -52,7 +52,7 @@ const props = defineProps({
   align-items: center;
   background-color: #ffffff;
   padding: 0 24px;
-  height: 4rem;
+  height: 3.5rem;
   box-shadow: 0 4px 8px rgba(0,0,0,0.05);
   font-size: 1.1rem;
   font-weight: 400;

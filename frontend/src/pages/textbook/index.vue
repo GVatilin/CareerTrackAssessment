@@ -65,38 +65,57 @@
             {{ selectedQuestion.description }}
           </h2>
 
-          <ul v-if="answers.length" class="question__answers">
-            <li
-              v-for="answer in answers"
-              :key="answer.id"
-              :class="[
-                'question__answer',
-                correctAnswers?.includes(answer.id) && 'question__answer--correct',
-                userAnswers?.includes(answer.id) && !correctAnswers?.includes(answer.id) && 'question__answer--wrong'
-              ]"
-            >
+          <ul v-if="isSimple(selectedQuestion)" class="question__answers">
+            <li v-for="answer in answers" :key="answer.id"
+                :class="[
+                  'question__answer',
+                  correctAnswers.includes(answer.id) && 'question__answer--correct',
+                  userAnswers.includes(answer.id) && !correctAnswers.includes(answer.id) && 'question__answer--wrong'
+                ]">
               <label class="question__label">
-                <input
-                  v-if="selectedQuestion.type === 0"
-                  class="question__input"
-                  type="radio"
-                  :value="answer.id"
-                  v-model="selectedAnswer"
-                  :disabled="resultStatus !== null"
-                />
-                <input
-                  v-else
-                  class="question__input"
-                  type="checkbox"
-                  :value="answer.id"
-                  v-model="selectedAnswers"
-                  :disabled="resultStatus !== null"
-                />
+                <input v-if="selectedQuestion.type === 0"
+                       type="radio"
+                       :value="answer.id"
+                       v-model="selectedAnswer"
+                       :disabled="resultStatus !== null"
+                       class="question__input" />
+                <input v-else
+                       type="checkbox"
+                       :value="answer.id"
+                       v-model="selectedAnswers"
+                       :disabled="resultStatus !== null"
+                       class="question__input" />
                 <span>{{ answer.text }}</span>
               </label>
             </li>
           </ul>
-          <p v-else class="question__empty">Ответы не найдены.</p>
+
+          <!-- AI text questions -->
+          <div v-else-if="isAI(selectedQuestion)" class="question__ai">
+            <textarea v-model="aiResponse"
+                      placeholder="Введите ваш ответ"
+                      :disabled="resultStatus !== null"
+                      class="ai-textarea"
+                      :class="{
+                     'ai-textarea--correct': aiScore === 2,
+                     'ai-textarea--partial': aiScore === 1,
+                     'ai-textarea--wrong'  : aiScore === 0
+                    }"></textarea>
+          </div>
+
+          <!-- результат + feedback -->
+          <div v-if="selectedQuestion && isAI(selectedQuestion) && resultStatus !== null"
+                class="ai-result">
+            <p :class="[
+                'ai-result__msg',
+                aiScore === 2 ? 'ai-result__msg--correct'
+                : aiScore === 1 ? 'ai-result__msg--partial'
+                : 'ai-result__msg--wrong'
+              ]">
+            {{ resultMessage }}
+            </p>
+            <p class="ai-result__feedback">{{ aiFeedback }}</p>
+          </div>
 
           <div class="question__actions">
             <button
@@ -104,7 +123,8 @@
               :class="['btn', resultStatus === null ? 'btn--submit' : 'btn--reset']"
               :disabled="resultStatus === null
                 ? (selectedQuestion.type === 0 && !selectedAnswer) ||
-                  (selectedQuestion.type !== 0 && !selectedAnswers.length)
+                  (selectedQuestion.type === 1 && !selectedAnswers.length) ||
+                  (selectedQuestion.type === 2 && !aiResponse.trim())
                 : false"
             >
               {{ resultStatus === null ? 'Ответить' : 'Ответить ещё раз' }}
@@ -175,6 +195,10 @@ const resultStatus = ref(null)  // null = не проверено, true/false п
 const resultMessage = ref('')
 const showSidebar = ref(true)  
 const showExplanation = ref(false)
+const aiResponse   = ref('')
+const aiScore     = ref(null)   // 0 | 1 | 2
+const aiFeedback  = ref('')     // текст от сервера
+
 
 const getToken = () => {
   const token = localStorage.getItem('chronoJWTToken')
@@ -213,7 +237,11 @@ const fetchTopics = () =>
   )
 const fetchQuestions = () =>
   axios.get(
-    `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/question/get_questions`,
+    `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/question/get_questions/simple`,
+  )
+const fetchAIQuestions = () =>
+  axios.get(
+    `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/question/get_questions/ai`,
   )
 
 
@@ -238,26 +266,28 @@ const fetchAnswers = async questionId => {
 
 const loadData = async () => {
   try {
-    const [chapRes, topicRes, quesRes] = await Promise.all([
+    const [chapRes, topicRes, questionRes, aiQuestionRes] = await Promise.all([
       fetchChapters(),
       fetchTopics(),
       fetchQuestions(),
-      getUser(),
-      fetchUser(),
+      fetchAIQuestions(),
     ])
 
     chapters.value = chapRes.data
     topics.value = topicRes.data
 
-    questions.value = quesRes.data.map(q => ({
-      ...q,
-      answers: q.answers || [],
-    }))
+    const sq = questionRes.data.map(q => ({ ...q, type: q.type }))
+    const aq = aiQuestionRes.data.map(q => ({ ...q, type: 2 }))
+    questions.value = [...sq, ...aq]
+
+    await fetchUser()
   } catch (err) {
     console.error('Ошибка при загрузке данных:', err)
   }
 }
 
+const isSimple = q => q && (q.type === 0 || q.type === 1)
+const isAI     = q => q && q.type === 2
 
 const getTopicsByChapter = chapterId =>
   topics.value.filter(t => t.chapter_id === chapterId)
@@ -269,45 +299,76 @@ const getQuestionsByTopic = topicId =>
 const toggleChapter = id => {
   const idx = openChapters.value.indexOf(id)
   idx > -1 ? openChapters.value.splice(idx, 1) : openChapters.value.push(id)
+  localStorage.setItem('openChapters', JSON.stringify(openChapters.value));
 }
 const isChapterOpen = id => openChapters.value.includes(id)
 
 const toggleTopic = id => {
   const idx = openTopics.value.indexOf(id)
   idx > -1 ? openTopics.value.splice(idx, 1) : openTopics.value.push(id)
+  localStorage.setItem('openTopics', JSON.stringify(openTopics.value));
 }
 const isTopicOpen = id => openTopics.value.includes(id)
 
 
 const selectQuestion = async question => {
+  resetQuestion()
   selectedQuestion.value = question
   selectedAnswer.value = null
   showExplanation.value = false
+  aiResponse.value = ''
+  localStorage.setItem('lastQuestion', question.id);
+
   await fetchAnswers(question.id)
+  await loadState(question.id)
 }
 
 const submitAnswers = async () => {
-  // Prepare payload
-  userAnswers.value =
-    selectedQuestion.value.type === 0
-      ? [selectedAnswer.value]
-      : [...selectedAnswers.value]
+  const token = getToken()
 
   try {
-    const token = getToken()
-    const { data } = await axios.post(
-      `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/question/check_user_answers`,
-      {
-        question_id: selectedQuestion.value.id,
-        selected_answer_id: userAnswers.value
-      },
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
+    let data
 
-    // Ответ от сервера: { is_user_right: bool, correct_answer_ids: UUID[] }
+    if (selectedQuestion.value.type === 2) {
+      /* AI-вопрос */
+      const res = await axios.post(
+        `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/question/check_ai_question`,
+        {
+          question_id: selectedQuestion.value.id,
+          text: aiResponse.value.trim()
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+
+      aiScore.value    = res.data.score
+      aiFeedback.value = res.data.feedback
+      resultStatus.value  = true
+      resultMessage.value = aiScore.value === 2 ? 'Правильно!'
+                          : aiScore.value === 1 ? 'Частичный ответ'
+                                                : 'Неправильно'
+    } else {
+      /* Обычный (radio | checkbox) */
+      userAnswers.value =
+        selectedQuestion.value.type === 0
+         ? [selectedAnswer.value]
+          : [...selectedAnswers.value]
+
+      const res = await axios.post(
+        `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/question/check_user_answers`,
+        {
+          question_id: selectedQuestion.value.id,
+          selected_answer_id: userAnswers.value
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      data = res.data
+      correctAnswers.value = data.correct_answer_id ?? []
+    }
+    
     resultStatus.value = data.is_user_right
     resultMessage.value = data.is_user_right ? 'Правильно!' : 'Неправильно'
-    correctAnswers.value = data.correct_answer_id
+
+    saveState()
   } catch (err) {
     console.error('Ошибка при проверке ответов:', err)
   }
@@ -389,12 +450,20 @@ const prevQuestion = () => {
 }
    
 const resetQuestion = () => {
-   selectedAnswer.value = null
-   selectedAnswers.value = []
-   userAnswers.value = []
-   correctAnswers.value = []
-   resultStatus.value = null
-   resultMessage.value = ''
+    selectedAnswer.value   = null;
+    selectedAnswers.value  = [];
+    aiResponse.value       = '';
+    userAnswers.value      = [];
+    correctAnswers.value   = [];
+    resultStatus.value     = null;
+    resultMessage.value    = '';
+    aiScore.value          = null;
+    aiFeedback.value       = '';
+    showExplanation.value  = false;
+
+    if (selectedQuestion.value?.id) {
+      localStorage.removeItem(`question_state_${selectedQuestion.value.id}`);
+    }
 }
 
 function toggleSidebar() {
@@ -405,7 +474,56 @@ const toggleExplanation = () => {
   showExplanation.value = !showExplanation.value
 }
 
-onMounted(loadData)
+function saveState() {
+  if (!selectedQuestion.value) return;
+  const key = `question_state_${selectedQuestion.value.id}`;
+  const state = {
+    selectedAnswer: selectedAnswer.value,
+    selectedAnswers: selectedAnswers.value,
+    aiResponse: aiResponse.value,
+    resultStatus: resultStatus.value,
+    resultMessage: resultMessage.value,
+    userAnswers: userAnswers.value,
+    correctAnswers: correctAnswers.value,
+    aiScore: aiScore.value,
+    aiFeedback: aiFeedback.value
+  };
+  localStorage.setItem(key, JSON.stringify(state));
+}
+
+// Загрузить сохранённое состояние вопроса
+async function loadState(questionId) {
+  const key = `question_state_${questionId}`;
+  const json = localStorage.getItem(key);
+  if (!json) return;
+  const s = JSON.parse(json);
+  selectedAnswer.value  = s.selectedAnswer;
+  selectedAnswers.value = s.selectedAnswers;
+  aiResponse.value      = s.aiResponse;
+  resultStatus.value    = s.resultStatus;
+  resultMessage.value   = s.resultMessage;
+  userAnswers.value     = s.userAnswers;
+  correctAnswers.value  = s.correctAnswers;
+  aiScore.value         = s.aiScore;
+  aiFeedback.value      = s.aiFeedback;
+}
+
+ onMounted(async () => {
+   const savedCh = localStorage.getItem('openChapters')
+   if (savedCh) openChapters.value = JSON.parse(savedCh)
+   const savedTp = localStorage.getItem('openTopics')
+   if (savedTp) openTopics.value   = JSON.parse(savedTp)
+
+   await loadData()
+
+  // восстановить последний выбранный вопрос
+   const last = localStorage.getItem('lastQuestion')
+   if (last) {
+     const q = questions.value.find(x => x.id === last)
+     if (q) await selectQuestion(q)
+   }
+ })
+
 </script>
 
 <style scoped>
@@ -492,13 +610,11 @@ onMounted(loadData)
 }
 
 /* --- Sidebar --- */
-.sidebar__chapter + .sidebar__chapter {
-  margin-top: 16px;
-}
 .sidebar__chapter-title {
   font-size: 18px;
   font-weight: 700;
   cursor: pointer;
+  margin-top: 0rem;
 }
 .sidebar__chapter-title:hover {
   color: #3182ce;
@@ -541,10 +657,10 @@ onMounted(loadData)
 /* --- Question Panel --- */
 .question {
   position: fixed;
-  top: 4.5rem;
+  top: 4rem;
   left: 50%;             /* центрируем по горизонтали */
   transform: translateX(-50%);
-  width: 20vw;
+  width: 25vw;
 }
 .question__title {
   font-size: 24px;
@@ -684,4 +800,42 @@ onMounted(loadData)
   font-size: 14px;
   line-height: 1.5;
 }
+
+.ai-textarea {
+  width: 100%;
+  box-sizing: border-box;  /* ← вот это важно! */
+  min-height: 120px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  resize: vertical;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* рамка текстового поля */
+.ai-textarea--correct { 
+  border: 2px solid #81e6d9; 
+  background-color: #e6fffa;
+}
+.ai-textarea--partial { 
+  border: 2px solid #e49159; 
+  background-color: #dfb294;
+}
+.ai-textarea--wrong   { 
+  border: 2px solid #fc8181; 
+  background-color: #ffe6e6;
+}
+
+/* подпись под полем */
+.ai-result__msg--correct { color: #81e6d9; }
+.ai-result__msg--partial { color: #e49159; }
+.ai-result__msg--wrong   { color: #fc8181; }
+
+.ai-result__feedback {
+  margin-top: 4px;
+  font-size: 14px;
+  color: #4a5568;
+}
+
 </style>

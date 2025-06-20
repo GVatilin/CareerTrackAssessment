@@ -10,8 +10,9 @@ from app.schemas import QuestionCreateForm, QuestionResponse, \
     AnswerCreateForm, AnswerResponse, \
     UserAnswerForm, CorrectAnswers, QuestionUpdateForm, \
     AnswerUpdateForm, QuizResponse, AIQuestionCreateForm, \
-    QuizSubmission, AIQuestionDebug
-
+    QuizSubmission, AIQuestionResponse, UserAIAnswerForm
+from app.config import get_settings, DefaultSettings
+from app.utils.ai_generation import check_ai_question_utils
 from app.utils.question import (
     add_question,
     get_all_questions,
@@ -72,7 +73,7 @@ async def create_ai_question(question: Annotated[AIQuestionCreateForm, Body()],
                         detail="Error creating question")
 
 
-@api_router.get('/get_questions',
+@api_router.get('/get_questions/simple',
             status_code=status.HTTP_200_OK,
             responses={
                      status.HTTP_401_UNAUTHORIZED: {
@@ -81,6 +82,17 @@ async def create_ai_question(question: Annotated[AIQuestionCreateForm, Body()],
                  })
 async def get_question(session: Annotated[AsyncSession, Depends(get_session)]) -> list[QuestionResponse]:
     return await get_all_questions(session)
+
+
+@api_router.get('/get_questions/ai',
+            status_code=status.HTTP_200_OK,
+            responses={
+                     status.HTTP_401_UNAUTHORIZED: {
+                         "descriprion": "Non authorized"
+                     }
+                 })
+async def get_question(session: Annotated[AsyncSession, Depends(get_session)]) -> list[AIQuestionResponse]:
+    return await get_all_ai_questions(session)
 
 
 @api_router.get('/debug/get_answers',
@@ -101,7 +113,7 @@ async def get_answers_debug(session: Annotated[AsyncSession, Depends(get_session
                          "descriprion": "Non authorized"
                      }
                  })
-async def get_ai_questions_debug(session: Annotated[AsyncSession, Depends(get_session)]) -> list[AIQuestionDebug]:
+async def get_ai_questions_debug(session: Annotated[AsyncSession, Depends(get_session)]) -> list[AIQuestionResponse]:
     return await get_all_ai_questions(session)
 
 
@@ -233,3 +245,17 @@ async def submit_quiz(submission: QuizSubmission,
                       current_user: Annotated[User, Depends(get_current_user)],
                       session: Annotated[AsyncSession, Depends(get_session)]):
     return await submit_quiz_utils(submission, session)
+
+
+@api_router.post('/check_ai_question',
+            status_code=status.HTTP_200_OK,
+            responses={
+                     status.HTTP_401_UNAUTHORIZED: {
+                         "descriprion": "Non authorized"
+                     }
+                 })
+async def check_ai_question(response: UserAIAnswerForm,
+                            current_user: Annotated[User, Depends(get_current_user)],
+                            session: Annotated[AsyncSession, Depends(get_session)],
+                            settings: Annotated[DefaultSettings, Depends(get_settings)]):
+    return await check_ai_question_utils(response.question_id, response.text, session, settings.API_KEY)
