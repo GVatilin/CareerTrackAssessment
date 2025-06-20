@@ -12,7 +12,7 @@ from app.schemas import QuestionCreateForm, AnswerCreateForm, \
     UserAnswerForm, CorrectAnswers, \
     QuestionUpdateForm, AnswerUpdateForm, QuizResponse, \
     AIQuestionCreateForm, QuizSubmission
-from app.utils.ai_generation import check_ai_question_utils
+from app.utils.ai_generation import check_ai_question_utils, get_ai_feedback
 
 settings = get_settings()
 
@@ -203,6 +203,7 @@ async def get_quiz_utils(session: AsyncSession, count: int, ai_count: int,
 async def submit_quiz_utils(submission: QuizSubmission, session: AsyncSession):
     correct_count = 0
     correct_answers = []
+    for_feedback = []
 
     for qa in submission.answers:
         ans = {
@@ -229,10 +230,16 @@ async def submit_quiz_utils(submission: QuizSubmission, session: AsyncSession):
         if tmp < correct_count:
             ans['is_user_right'] = True
         ans['correct_answer_id'] = correct_ids
+        ans["explanation"] = question.explanation
         correct_answers.append(ans)
+        for_feedback.append({
+            'question': f'{question.description}',
+            'is_user_answer_right': ans['is_user_right']
+        })
 
     ai_feedback = []
     for qa in submission.ai_answers:
+        question = await session.get(AIQuestion, qa.question_id)
         ans = {"question_id": qa.question_id}
         res = await check_ai_question_utils(qa.question_id, qa.text, session, settings.API_KEY)
         ans["text"] = qa.text
@@ -241,6 +248,12 @@ async def submit_quiz_utils(submission: QuizSubmission, session: AsyncSession):
         correct_count += (res["score"] > 0)
         ai_feedback.append(ans)
         correct_answers.append(ans)
+        for_feedback.append({
+            'question': f'{question.description}',
+            'is_user_answer_right': ans['is_user_right']
+        })
+
+    feedback_res = await get_ai_feedback(for_feedback)
 
 
     total_mc = len(submission.answers) + len(submission.ai_answers)
@@ -249,6 +262,6 @@ async def submit_quiz_utils(submission: QuizSubmission, session: AsyncSession):
         "total_mc": total_mc,
         "correct_mc": correct_count,
         "score_percent": round(correct_count / total_mc * 100, 2) if total_mc else 0.0,
-        "ai_answers_received": ai_feedback,
+        "ai_answers_received": feedback_res,
         "ai_review_required": len(ai_feedback),
     }

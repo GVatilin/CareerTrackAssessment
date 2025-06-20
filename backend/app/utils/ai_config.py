@@ -34,3 +34,27 @@ async def payload_check_ai_question(description, answer):
             },
         ],
     }
+
+
+def final_feedback(description):
+    return {
+        "model": ai_model,
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "Не задавай вопросов, не используй markdown, пиши обычным текстом. "
+                    "Не проси что-то добавить или отправить дополнительную информацию. "
+                    "Пользователь только получит этот единственный ответ, он не сможет что-то еще отправить и получить."
+                )
+            },
+            {
+                "role": "user",
+                "content": (
+                    "По каким темам мне надо подтянуть знания, если на тесте я ответил так:\n" + 
+                    str(description) +
+                    "\nтут question оначает вопрос, а is_user_right правильно ли я на него ответил\n"
+                )
+            },
+        ],
+    }

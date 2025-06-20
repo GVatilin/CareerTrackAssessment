@@ -8,9 +8,11 @@ from uuid import UUID
 from app.database.models import AIQuestion
 from app.utils.ai_config import (
     ai_url,
+    final_feedback,
     get_headers,
     payload_check_ai_question,
 )
+from app.config import get_settings
 
 
 async def check_ai_question_utils(question_id: UUID,
@@ -45,3 +47,15 @@ async def check_ai_question_utils(question_id: UUID,
                     "score": 0,
                     "feedback": f"check_error, status: {resp.status}"
                 }
+            
+
+async def get_ai_feedback(questions):
+    payload = final_feedback(questions)
+    headers = await get_headers(get_settings().API_KEY)
+    async with aiohttp.ClientSession() as client:
+        async with client.post(ai_url, json=payload, headers=headers) as resp:
+            if resp.status == 200:
+                data = await resp.json()
+                return data["choices"][0]["message"]["content"]
+            else:
+                return f"check_error, status: {resp.status}"
