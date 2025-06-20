@@ -22,7 +22,6 @@
 
       <!-- ░░░ Main content ░░░ -->
       <main class="main-content">
-        <!-- Шаг 1: настройка квиза -->
         <div v-if="!quizStarted" class="card setup-card">
           <h1 class="page-title">Создать квиз</h1>
 
@@ -67,7 +66,6 @@
           </button>
         </div>
 
-        <!-- Шаг 2: прохождение -->
         <div v-else class="card runner-card">
           <div class="question-header">
             <h2 class="question-title">Вопрос {{ currentIndex + 1 }} из {{ total }}</h2>
@@ -122,8 +120,8 @@
 
           <!-- Навигация -->
           <div class="nav-buttons">
-            <button class="button-ghost" @click="prev" :disabled="currentIndex === 0">← Назад</button>
-            <button class="button-ghost" @click="next" :disabled="currentIndex >= total - 1">Вперёд →</button>
+            <button class="button-ghost" @click="prev" :disabled="currentIndex === 0">← Назад</button>
+            <button class="button-ghost" @click="next" :disabled="currentIndex >= total - 1">Вперёд →</button>
           </div>
 
           <!-- Отправка результатов -->
@@ -138,7 +136,7 @@
               {{ result.correctCount }} из {{ result.totalMc }} ({{ result.scorePercent }}%)
             </h3>
             <p v-if="result.aiReviewRequired">
-              Требуется AI‑проверка: {{ result.aiReviewRequired }} ответ(а)
+              Требуется AI-проверка: {{ result.aiReviewRequired }} ответ(а)
             </p>
             <p class="ai-review" v-if="result.aiReview">AI‑review: {{ result.aiReview }}</p>
           </div>
@@ -377,7 +375,6 @@ async function submit() {
   background: #e9f6f7;
 }
 body {
-  font-family: 'Segoe UI', 'Open Sans', sans-serif;
   font-size: 16px;
   line-height: 1.5;
 }
