@@ -251,7 +251,6 @@ const onSubmit = async () => {
 }
 
 .btn-submit {
-  padding: 1rem 2rem;
   font-size: 1.1rem;
   font-weight: 600;
   border-radius: 8px;
@@ -261,6 +260,8 @@ const onSubmit = async () => {
   color: #fff;
   align-self: center;
   transition: background-color 0.3s;
+  width: 25%;
+  height: 3rem;
 }
 
 .btn-submit:hover {
