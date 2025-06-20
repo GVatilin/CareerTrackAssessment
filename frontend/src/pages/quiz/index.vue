@@ -1,4 +1,6 @@
 <template>
+<div>
+  <NavBar :username="user.username" />
   <div class="quiz-layout">
     <!-- ░░░ Sidebar ░░░ -->
     <aside class="sidebar" v-if="topics.length">
@@ -15,6 +17,7 @@
         </li>
       </ul>
     </aside>
+    
 
     <!-- ░░░ Main content ░░░ -->
     <main class="main-content">
@@ -128,20 +131,45 @@
       </div>
     </main>
   </div>
+</div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import axios from 'axios'
+import NavBar from '../../components/NavBar.vue'
 
 // ░░░ Список тем ░░░
 const topics = ref([])
+const user = ref({ username: "Loading..." })
+
+const getUser = async () => {
+  try {
+    const token = getToken()
+    const { data } = await axios.get(
+      `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/user/me`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    )
+    return data
+  } catch {
+    return -1
+  }
+}
+
+const fetchUser = async () => {
+  user.value = await getUser();
+};
 
 // ░░░ Параметры квиза ░░░
 const params = reactive({ n: 5, k: 3, ai_compose: 2, topic_id: null })
 
 onMounted(async () => {
-  const { data } = await axios.get('/api/v1/topic/get_topics')
+  await fetchUser()
+  const { data } = await axios.get(`http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/topic/get_topics`)
   topics.value = data
   if (data.length) params.topic_id = data[0].id
 })
@@ -174,7 +202,7 @@ async function startQuiz() {
   const p = { n: params.n, k: params.k, topic_id: params.topic_id }
   if (params.ai_compose) p.ai_compose = params.ai_compose
 
-  const { data } = await axios.get('/api/v1/question/quiz/get', { params: p })
+  const { data } = await axios.get(`http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/question/quiz/get`, { params: p })
   const qs = [
     ...data.questions.map(q => ({ ...q, ai: false })),
     ...data.ai_questions.map(q => ({ ...q, ai: true })),
@@ -231,7 +259,7 @@ async function submit() {
     })),
   }
   const token = getToken()
-  const { data } = await axios.post('/api/v1/question/quiz/submit', payload, {
+  const { data } = await axios.post(`http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/question/quiz/submit`, payload, {
     headers: { Authorization: `Bearer ${token}` },
   })
 
