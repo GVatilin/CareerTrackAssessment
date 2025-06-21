@@ -171,7 +171,7 @@ async def remove_answer(answer_id: UUID, session: AsyncSession):
 
 async def get_quiz_utils(session: AsyncSession, count: int, ai_count: int, 
                          gen_count: int, topic_id: UUID, chapter_id: UUID) -> QuizResponse:
-    if (topic_id is None and chapter_id is None) or (topic_id is None):
+    if (topic_id is None and chapter_id is None):
         raise HTTPException(
             404,
             detail="Укажите либо chapter_id и topic_id, либо chapter_id"

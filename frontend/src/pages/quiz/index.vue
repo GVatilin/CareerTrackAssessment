@@ -4,21 +4,6 @@
     <NavBar :username="user.username" />
 
     <div class="quiz-layout">
-      <!-- Sidebar: список глав -->
-      <aside class="sidebar" v-if="chapters.length">
-        <button class="back-btn" @click="goBack">←</button>
-        <h2 class="sidebar-title">Главы</h2>
-        <ul class="topics">
-          <li
-            v-for="c in chapters"
-            :key="c.id"
-            :class="{ active: c.id === params.chapter_id }"
-            @click="selectChapter(c.id)"
-          >
-            {{ c.name }}
-          </li>
-        </ul>
-      </aside>
 
       <!-- Main content -->
       <main class="main-content">
@@ -27,9 +12,9 @@
 
           <!-- Выбор главы -->
           <div class="form-field">
-            <label>Глава</label>
+            <label>Направление</label>
             <select v-model="params.chapter_id">
-              <option :value="null">— Любая глава —</option>
+              <option :value="null">— Выберите направление —</option>
               <option v-for="c in chapters" :key="c.id" :value="c.id">{{ c.name }}</option>
             </select>
           </div>
@@ -203,12 +188,6 @@ onMounted(async () => {
   topics.value = topRes.data
 })
 
-// Выбор главы
-function selectChapter(id) {
-  params.chapter_id = id
-  params.topic_id = null
-}
-
 watch(
   () => params.chapter_id,
   () => {
@@ -243,10 +222,6 @@ const result = reactive({
 
 const total = computed(() => questions.value.length)
 const current = computed(() => questions.value[currentIndex.value] || {})
-
-function goBack() {
-  window.history.length > 1 && window.history.back()
-}
 
 // Старт квиза
 async function startQuiz() {
@@ -430,7 +405,7 @@ body {
   border: 1px solid #ececec;
   border-radius: 6px;
   padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05)
 }
 .mt-4 {
   margin-top: 1.5rem;
@@ -462,7 +437,7 @@ body {
 }
 
 .button-primary {
-  background: var(--color-primary);
+  background: #38a169;
   color: #fff;
   border: none;
   border-radius: 4px;
@@ -472,7 +447,7 @@ body {
   transition: background 0.2s;
 }
 .button-primary:hover {
-  background: #00979d;
+  background: #2f855a;
 }
 .button-primary:disabled {
   opacity: 0.6;
@@ -581,5 +556,20 @@ body {
   .button-ghost {
     width: 100%;
   }
+}
+
+.form-field.inline label {
+  flex: 0 0 8rem; /* фиксированная ширина метки для выравнивания */
+  margin: 0;
+  padding-right: 0.5rem;
+}
+
+.form-field.inline select {
+  flex: 1;
+}
+
+.form-field.inline input[type='number'] {
+  flex: 0 0 auto;
+  width: 2.3rem;
 }
 </style>
