@@ -4,8 +4,6 @@
     <NavBar :username="user.username" />
 
     <div class="quiz-layout">
-
-      <!-- Main content -->
       <main class="main-content">
         <div v-if="!quizStarted" class="card setup-card">
           <h1 class="page-title">Создать квиз</h1>
@@ -19,7 +17,7 @@
             </select>
           </div>
 
-          <!-- Выбор темы (опционально, зависит от главы) -->
+          <!-- Выбор темы -->
           <div class="form-field" v-if="filteredTopics.length">
             <label>Тема <span class="text-muted">(необязательно)</span></label>
             <select v-model="params.topic_id">
@@ -31,21 +29,44 @@
           <!-- Настройка количества вопросов -->
           <div class="form-field inline">
             <label>Обычные вопросы</label>
-            <input type="number" v-model.number="params.n" min="0" />
+            <input
+              type="number"
+              v-model.number="params.n"
+              min="0"
+              :max="maxCount.total"
+            />
+            <span class="available-count">
+              доступно {{ maxCount.total ?? 0 }}
+            </span>
           </div>
           <div class="form-field inline">
-            <label>AI‑проверяемые</label>
-            <input type="number" v-model.number="params.k" min="0" />
+            <label>AI-проверяемые</label>
+            <input
+              type="number"
+              v-model.number="params.k"
+              min="0"
+              :max="maxCount.ai"
+            />
+            <span class="available-count">
+              доступно {{ maxCount.ai ?? 0 }}
+            </span>
           </div>
           <div class="form-field inline">
             <label>AI-генерируемые</label>
-            <input type="number" v-model.number="params.ai_compose" min="0" />
+            <input
+              type="number"
+              v-model.number="params.ai_compose"
+              min="0"
+            />
+            <!-- для генерируемых вопросов лимит не выводим -->
           </div>
 
           <button
             class="button-primary w-full"
             @click="startQuiz"
-            :disabled="!params.chapter_id && !params.topic_id"
+            :disabled="!params.chapter_id && !params.topic_id
+                        || params.n > maxCount.total
+                        || params.k > maxCount.ai"
           >
             Начать квиз
           </button>
@@ -223,6 +244,11 @@ const result = reactive({
 const total = computed(() => questions.value.length)
 const current = computed(() => questions.value[currentIndex.value] || {})
 
+const maxCount = reactive({
+  total: null,
+  ai: null,
+})
+
 // Старт квиза
 async function startQuiz() {
   const base = `http://${process.env.VUE_APP_BACKEND_URL}:8080`
@@ -322,6 +348,48 @@ async function submit() {
   result.answers = data.answers || []
   showResult.value = true
 }
+
+// Функция для запроса количества вопросов
+async function updateQuestionCount() {
+  // если ни глава, ни тема не выбраны — сбрасываем
+  if (!params.chapter_id && !params.topic_id) {
+    maxCount.total = null
+    maxCount.ai = null
+    return
+  }
+
+  const base = `http://${process.env.VUE_APP_BACKEND_URL}:8080`
+  const query = {}
+  if (params.topic_id) {
+    query.topic_id = params.topic_id
+  } else {
+    query.chapter_id = params.chapter_id
+  }
+
+  try {
+    const { data } = await axios.get(
+      `${base}/api/v1/question/quiz/get_question_count`,
+      { params: query }
+    )
+    maxCount.total = data.count
+    maxCount.ai    = data.ai_count
+
+    // Не даём params.n и params.k превысить новые лимиты
+    if (params.n > data.count) params.n = data.count
+    if (params.k > data.ai_count) params.k = data.ai_count
+  } catch (e) {
+    console.error('Не удалось получить количество вопросов:', e)
+  }
+}
+
+// При смене chapter_id — сбрасываем topic_id и запрашиваем count
+watch(() => params.chapter_id, () => {
+  params.topic_id = null
+  updateQuestionCount()
+})
+
+// При смене topic_id — просто запрашиваем count
+watch(() => params.topic_id, updateQuestionCount)
 </script>
 
 <style>
@@ -571,5 +639,12 @@ body {
 .form-field.inline input[type='number'] {
   flex: 0 0 auto;
   width: 2.3rem;
+}
+
+.available-count {
+  margin-left: 0.5rem;
+  font-size: 0.875rem;
+  color: #666666;
+  white-space: nowrap;
 }
 </style>
