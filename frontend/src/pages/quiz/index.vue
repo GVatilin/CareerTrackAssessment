@@ -64,11 +64,14 @@
           <button
             class="button-primary w-full"
             @click="startQuiz"
-            :disabled="!params.chapter_id && !params.topic_id
-                        || params.n > maxCount.total
-                        || params.k > maxCount.ai"
+            :disabled="
+              loadingQuiz ||
+              (!params.chapter_id && !params.topic_id) ||
+              params.n > maxCount.total ||
+              params.k > maxCount.ai
+            "
           >
-            Начать квиз
+            {{ loadingQuiz ? 'Составляем квиз' : 'Начать квиз' }}
           </button>
         </div>
 
@@ -145,7 +148,13 @@
 
           <!-- Отправка результатов -->
           <div v-if="currentIndex === total - 1 && !showResult" class="submit-area">
-            <button class="button-primary" @click="submit">Отправить</button>
+            <button
+              class="button-primary"
+              @click="submit"
+              :disabled="checkingQuiz"
+            >
+              {{ checkingQuiz ? 'Проверяем квиз' : 'Отправить' }}
+            </button>
           </div>
 
           <!-- Итог -->
@@ -249,42 +258,50 @@ const maxCount = reactive({
   ai: null,
 })
 
+const loadingQuiz = ref(false)
+const checkingQuiz = ref(false)
+
 // Старт квиза
 async function startQuiz() {
+  loadingQuiz.value = true
   const base = `http://${process.env.VUE_APP_BACKEND_URL}:8080`
   const p = { n: params.n, k: params.k, m: params.ai_compose }
   if (params.chapter_id) p.chapter_id = params.chapter_id
   if (params.topic_id) p.topic_id = params.topic_id
 
-  const { data } = await axios.get(`${base}/api/v1/question/quiz/get`, { params: p })
-  const qs = [
-    ...data.questions.map(q => ({ ...q, ai: false })),
-    ...data.ai_questions.map(q => ({ ...q, ai: true })),
-    ...data.gen_question.map((text, idx) => ({
-      id: `gen_${idx}`,
-      description: text,
-      ai: true,
-      type: 0,
-      answers: []
-    }))
-  ]
-  questions.value = qs
-  quizStarted.value = true
-  genQuestions.value = data.gen_question
+  try {
+    const { data } = await axios.get(`${base}/api/v1/question/quiz/get`, { params: p })
+    const qs = [
+      ...data.questions.map(q => ({ ...q, ai: false })),
+      ...data.ai_questions.map(q => ({ ...q, ai: true })),
+      ...data.gen_question.map((text, idx) => ({
+        id: `gen_${idx}`,
+        description: text,
+        ai: true,
+        type: 0,
+        answers: []
+      }))
+    ]
+    questions.value = qs
+    quizStarted.value = true
+    genQuestions.value = data.gen_question
 
-  console.log(qs)
+    console.log(qs)
 
-  questions.value.forEach(q => {
-    if (q.ai && q.id.startsWith('gen_')) {
-      userGenAnswers[q.id] = ''           // для gen_question
-    }
-    else if (q.ai) {
-      userAI[q.id] = ''                   // для ai_questions
-    }
-    else {
-      userAnswers[q.id] = q.type === 1 ? [] : null
-    }
-  })
+    questions.value.forEach(q => {
+      if (q.ai && q.id.startsWith('gen_')) {
+        userGenAnswers[q.id] = ''           // для gen_question
+      }
+      else if (q.ai) {
+        userAI[q.id] = ''                   // для ai_questions
+      }
+      else {
+        userAnswers[q.id] = q.type === 1 ? [] : null
+      }
+    })
+  } finally {
+      loadingQuiz.value = false
+  }
 }
 
 // Навигация
@@ -320,6 +337,7 @@ function getToken() {
 }
 
 async function submit() {
+  checkingQuiz.value = true
   const payload = {
     answers: Object.entries(userAnswers).map(([qid, sel]) => ({
       question_id: qid,
@@ -347,6 +365,7 @@ async function submit() {
   result.aiReviewRequired = data.ai_review_required
   result.answers = data.answers || []
   showResult.value = true
+  checkingQuiz.value = false
 }
 
 // Функция для запроса количества вопросов
@@ -576,6 +595,7 @@ body {
   border: 1px solid var(--color-border);
   border-radius: 4px;
   resize: vertical;
+  box-sizing: border-box;
 }
 .answer-input:focus {
   border-color: var(--color-primary);
