@@ -1,10 +1,10 @@
 <template>
   <div>
-    <!-- ░░░ Top navbar ░░░ -->
+    <!-- Top navbar -->
     <NavBar :username="user.username" />
 
     <div class="quiz-layout">
-      <!-- ░░░ Sidebar: список глав ░░░ -->
+      <!-- Sidebar: список глав -->
       <aside class="sidebar" v-if="chapters.length">
         <button class="back-btn" @click="goBack">←</button>
         <h2 class="sidebar-title">Главы</h2>
@@ -20,7 +20,7 @@
         </ul>
       </aside>
 
-      <!-- ░░░ Main content ░░░ -->
+      <!-- Main content -->
       <main class="main-content">
         <div v-if="!quizStarted" class="card setup-card">
           <h1 class="page-title">Создать квиз</h1>
@@ -52,10 +52,10 @@
             <label>AI‑проверяемые</label>
             <input type="number" v-model.number="params.k" min="0" />
           </div>
-          <!-- <div class="form-field inline">
-            <label>AI‑генерируемые</label>
+          <div class="form-field inline">
+            <label>AI-генерируемые</label>
             <input type="number" v-model.number="params.ai_compose" min="0" />
-          </div> -->
+          </div>
 
           <button
             class="button-primary w-full"
@@ -97,22 +97,35 @@
                 </label>
               </div>
             </template>
-
+            
             <!-- AI‑вопрос (свободный ввод) -->
+            <!-- AI-вопросы: свободный ввод -->
             <template v-else>
+              <!-- если вопрос сгенерированный (id начинается с "gen_") -->
               <textarea
+                v-if="current.id && current.id.startsWith('gen_')"
+                class="answer-input"
+                v-model="userGenAnswers[current.id]"
+                rows="4"
+                placeholder="Ваш ответ..."
+              ></textarea>
+
+              <!-- обычный AI-вопрос из базы -->
+              <textarea
+                v-else
                 class="answer-input"
                 v-model="userAI[current.id]"
                 rows="4"
                 placeholder="Ваш ответ..."
               ></textarea>
             </template>
+
           </div>
 
           <!-- Результат по текущему вопросу -->
           <div v-if="showResult" class="result-section">
-            <p v-if="isQuestionRight(current.id)" class="success-message">Правильно!</p>
-            <p v-else class="error-message">Неправильно</p>
+            <p v-if="isQuestionRight(current.id) === true"  class="success-message">Правильно!</p>
+            <p v-if="isQuestionRight(current.id) === false" class="error-message">Неправильно</p>
           </div>
           <div v-if="showResult" class="result-section">
             <p>{{ getExplanation(current.id) }}</p>
@@ -151,7 +164,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import NavBar from '@/components/NavBar.vue'
 
-// ░░░ Пользователь (для NavBar) ░░░
+// Пользователь (для NavBar)
 const user = ref({ username: 'Loading…' })
 
 async function fetchUser() {
@@ -165,11 +178,11 @@ async function fetchUser() {
   }
 }
 
-// ░░░ Данные ░░░
+// Данные 
 const chapters = ref([])
 const topics = ref([])
 
-// ░░░ Параметры квиза ░░░
+// Параметры квиза
 const params = reactive({
   n: 5,
   k: 3,
@@ -178,7 +191,7 @@ const params = reactive({
   topic_id: null,
 })
 
-// ░░░ Получаем главы и темы ░░░
+// Получаем главы и темы
 onMounted(async () => {
   await fetchUser()
   const base = `http://${process.env.VUE_APP_BACKEND_URL}:8080`
@@ -190,7 +203,7 @@ onMounted(async () => {
   topics.value = topRes.data
 })
 
-// ░░░ Выбор главы ░░░
+// Выбор главы
 function selectChapter(id) {
   params.chapter_id = id
   params.topic_id = null
@@ -203,18 +216,20 @@ watch(
   }
 )
 
-// ░░░ Список тем, фильтрованных по главе ░░░
+// Список тем, фильтрованных по главе
 const filteredTopics = computed(() => {
   if (!params.chapter_id) return topics.value
   return topics.value.filter(t => t.chapter_id === params.chapter_id)
 })
 
-// ░░░ Состояния квиза ░░░
+// Состояния квиза
 const quizStarted = ref(false)
 const questions = ref([])
 const currentIndex = ref(0)
 const userAnswers = reactive({})
 const userAI = reactive({})
+const userGenAnswers = reactive({})
+const genQuestions = ref([])
 
 const showResult = ref(false)
 const result = reactive({
@@ -233,30 +248,45 @@ function goBack() {
   window.history.length > 1 && window.history.back()
 }
 
-// ░░░ Старт квиза ░░░
+// Старт квиза
 async function startQuiz() {
   const base = `http://${process.env.VUE_APP_BACKEND_URL}:8080`
-  const p = { n: params.n, k: params.k }
+  const p = { n: params.n, k: params.k, m: params.ai_compose }
   if (params.chapter_id) p.chapter_id = params.chapter_id
   if (params.topic_id) p.topic_id = params.topic_id
-  if (params.ai_compose) p.ai_compose = params.ai_compose
 
   const { data } = await axios.get(`${base}/api/v1/question/quiz/get`, { params: p })
   const qs = [
     ...data.questions.map(q => ({ ...q, ai: false })),
     ...data.ai_questions.map(q => ({ ...q, ai: true })),
+    ...data.gen_question.map((text, idx) => ({
+      id: `gen_${idx}`,
+      description: text,
+      ai: true,
+      type: 0,
+      answers: []
+    }))
   ]
   questions.value = qs
   quizStarted.value = true
+  genQuestions.value = data.gen_question
+
   console.log(qs)
 
-  qs.forEach(q => {
-    if (q.ai) userAI[q.id] = ''
-    else userAnswers[q.id] = q.type === 1 ? [] : null
+  questions.value.forEach(q => {
+    if (q.ai && q.id.startsWith('gen_')) {
+      userGenAnswers[q.id] = ''           // для gen_question
+    }
+    else if (q.ai) {
+      userAI[q.id] = ''                   // для ai_questions
+    }
+    else {
+      userAnswers[q.id] = q.type === 1 ? [] : null
+    }
   })
 }
 
-// ░░░ Навигация ░░░
+// Навигация
 function next() {
   if (currentIndex.value < total.value - 1) currentIndex.value++
 }
@@ -298,13 +328,17 @@ async function submit() {
       question_id: qid,
       text: txt,
     })),
+    gen_answers: Object.entries(userGenAnswers).map(([qid, ans]) => ({
+      question_id: qid,
+      description: questions.value.find(q => q.id === qid).description,
+      answer: ans
+    }))
   }
   const token = getToken()
   const { data } = await axios.post(`http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/question/quiz/submit`, payload, {
     headers: { Authorization: `Bearer ${token}` },
   })
 
-  // ✔️ Обрабатываем новый ответ бэкенда
   result.totalMc = data.total_mc
   result.correctCount = data.correct_mc
   result.scorePercent = data.score_percent
@@ -427,7 +461,6 @@ body {
   font-size: 1rem;
 }
 
-/* ░░░ Buttons ░░░ */
 .button-primary {
   background: var(--color-primary);
   color: #fff;
@@ -466,7 +499,6 @@ body {
   width: 100%;
 }
 
-/* ░░░ Question area ░░░ */
 .question-body {
   margin-bottom: 1rem;
 }
@@ -507,7 +539,6 @@ body {
   outline: none;
 }
 
-/* ░░░ Result ░░░ */
 .result-section {
   margin-top: 1rem;
 }
@@ -527,7 +558,6 @@ body {
   margin-top: 0.75rem;
 }
 
-/* ░░░ Nav buttons ░░░ */
 .nav-buttons {
   display: flex;
   justify-content: space-between;

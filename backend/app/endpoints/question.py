@@ -227,11 +227,12 @@ async def delete_answer(current_user: Annotated[User, Depends(get_current_user)]
                      }
                  })
 async def get_quiz(session: Annotated[AsyncSession, Depends(get_session)],
-                   count: int = Query(..., alias="n", gt=0, le=100),
-                   ai_count: int = Query(..., alias="k", gt=0, le=100),
+                   count: int = Query(..., alias="n", gt=-1, le=100),
+                   ai_count: int = Query(..., alias="k", gt=-1, le=100),
+                   gen_count: int = Query(..., alias="m", gt=-1, le=100),
                    topic_id: Optional[UUID] = Query(None, description="ID темы (Topic)"),
                    chapter_id: Optional[UUID] = Query(None, description="ID раздела (Chapter)"),) -> QuizResponse:
-    return await get_quiz_utils(session, count, ai_count, topic_id, chapter_id)
+    return await get_quiz_utils(session, count, ai_count, gen_count, topic_id, chapter_id)
 
 
 @api_router.post('/quiz/submit',

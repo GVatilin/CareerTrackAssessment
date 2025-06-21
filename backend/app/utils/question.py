@@ -6,13 +6,15 @@ from sqlalchemy.orm import selectinload
 from uuid import UUID
 
 
-from app.database.models import Question, User, Answer, AIQuestion, Topic
+from app.database.models import Question, User, Answer, AIQuestion, \
+    Topic, Chapter
 from app.config import get_settings
 from app.schemas import QuestionCreateForm, AnswerCreateForm, \
     UserAnswerForm, CorrectAnswers, \
     QuestionUpdateForm, AnswerUpdateForm, QuizResponse, \
     AIQuestionCreateForm, QuizSubmission
-from app.utils.ai_generation import check_ai_question_utils, get_ai_feedback
+from app.utils.ai_generation import check_ai_question_utils, get_ai_feedback, \
+    generate_ai_question, ai_check
 
 settings = get_settings()
 
@@ -168,7 +170,7 @@ async def remove_answer(answer_id: UUID, session: AsyncSession):
 
 
 async def get_quiz_utils(session: AsyncSession, count: int, ai_count: int, 
-                         topic_id: UUID, chapter_id: UUID) -> QuizResponse:
+                         gen_count: int, topic_id: UUID, chapter_id: UUID) -> QuizResponse:
     if (topic_id is None and chapter_id is None) or (topic_id is None):
         raise HTTPException(
             404,
@@ -181,9 +183,11 @@ async def get_quiz_utils(session: AsyncSession, count: int, ai_count: int,
     if topic_id:
         q1 = q1.where(Question.topic_id == topic_id)
         q2 = q2.where(AIQuestion.topic_id == topic_id)
+        q3 = select(Topic).where(Topic.id == topic_id)
     else:
         q1 = q1.join(Question.topic).where(Topic.chapter_id == chapter_id)
         q2 = q2.join(AIQuestion.topic).where(Topic.chapter_id == chapter_id)
+        q3 = select(Chapter).where(Chapter.id == chapter_id)
 
     q1 = q1.order_by(func.random()).limit(count)
     res1 = await session.execute(q1)
@@ -197,7 +201,11 @@ async def get_quiz_utils(session: AsyncSession, count: int, ai_count: int,
     if len(ai_questions) < ai_count:
         raise HTTPException(404, detail="Недостаточно AI-вопросов")
     
-    return QuizResponse(questions=questions, ai_questions=ai_questions)
+    res3 = await session.execute(q3)
+    gen_topic = res3.scalar_one_or_none().name
+    gen_questions = await generate_ai_question(gen_topic, gen_count)
+    
+    return QuizResponse(questions=questions, ai_questions=ai_questions, gen_question=gen_questions)
 
 
 async def submit_quiz_utils(submission: QuizSubmission, session: AsyncSession):
@@ -241,7 +249,7 @@ async def submit_quiz_utils(submission: QuizSubmission, session: AsyncSession):
     for qa in submission.ai_answers:
         question = await session.get(AIQuestion, qa.question_id)
         ans = {"question_id": qa.question_id}
-        res = await check_ai_question_utils(qa.question_id, qa.text, session, settings.API_KEY)
+        res = await check_ai_question_utils(qa.question_id, qa.text, session)
         ans["text"] = qa.text
         ans["explanation"] = res["feedback"]
         ans["is_user_right"] = (res["score"] > 0)
@@ -253,10 +261,25 @@ async def submit_quiz_utils(submission: QuizSubmission, session: AsyncSession):
             'is_user_answer_right': ans['is_user_right']
         })
 
+    gen_feedback = []
+    for qa in submission.gen_answers:
+        res = await ai_check(qa.description, qa.answer)
+        ans = {"question_id": qa.question_id}
+        ans["text"] = qa.answer
+        ans["explanation"] = res["feedback"]
+        ans["is_user_right"] = (res["score"] > 0)
+        correct_count += (res["score"] > 0)
+        gen_feedback.append(ans)
+        correct_answers.append(ans)
+        for_feedback.append({
+            'question': qa.description,
+            'is_user_answer_right': ans['is_user_right']
+        })
+
     feedback_res = await get_ai_feedback(for_feedback)
 
 
-    total_mc = len(submission.answers) + len(submission.ai_answers)
+    total_mc = len(submission.answers) + len(submission.ai_answers) + len(submission.gen_answers)
     return {
         "answers": correct_answers,
         "total_mc": total_mc,

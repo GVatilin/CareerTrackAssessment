@@ -94,6 +94,14 @@ class UserAIAnswerForm(BaseModel):
     text: str
 
 
+class UserGenAnswerForm(BaseModel):
+    """
+    Форма для проверки сгенерированного вопроса
+    """
+    question_id: str
+    description: str
+    answer: str
+
 class CorrectAnswers(BaseModel):
     """
     Возвращает список правильных вариантов ответа и правильно ли ответил пользователь
@@ -142,6 +150,7 @@ class QuizResponse(BaseModel):
     """
     questions: List[QuestionQuizResponse]
     ai_questions: List[AIQuestionQuizResponse]
+    gen_question: List[str]
 
 
 class QuizSubmission(BaseModel):
@@ -150,3 +159,4 @@ class QuizSubmission(BaseModel):
     """
     answers: List[UserAnswerForm]
     ai_answers: List[UserAIAnswerForm]
+    gen_answers: List[UserGenAnswerForm]
