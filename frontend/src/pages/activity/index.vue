@@ -1,5 +1,6 @@
 <template>
   <div class="question-page">
+    <invalidUserPanel v-show="user.username == 'Guest'"/>
     <NavBar :username="user.username" />
 
     <div class="question-page__wrapper">
