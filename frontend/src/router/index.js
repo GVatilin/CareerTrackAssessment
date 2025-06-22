@@ -34,6 +34,11 @@ const routes = [
     component: () => import('../pages/textbook/index.vue')
   },
   {
+    path: '/textbook',
+    name: 'Textbook',
+    component: () => import('../pages/textbook/index.vue')
+  },
+  {
     path: '/quiz',
     name: 'Quiz',
     component: () => import('../pages/quiz/index.vue')
