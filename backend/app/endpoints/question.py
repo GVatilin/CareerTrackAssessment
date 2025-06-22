@@ -27,6 +27,7 @@ from app.utils.question import (
     add_ai_question,
     submit_quiz_utils,
     get_all_ai_questions,
+    get_question_count_utils,
 )
 
 
@@ -229,7 +230,7 @@ async def delete_answer(current_user: Annotated[User, Depends(get_current_user)]
 async def get_quiz(session: Annotated[AsyncSession, Depends(get_session)],
                    count: int = Query(..., alias="n", gt=-1, le=100),
                    ai_count: int = Query(..., alias="k", gt=-1, le=100),
-                   gen_count: int = Query(..., alias="m", gt=-1, le=100),
+                   gen_count: int = Query(..., alias="m", gt=-1, le=15),
                    topic_id: Optional[UUID] = Query(None, description="ID темы (Topic)"),
                    chapter_id: Optional[UUID] = Query(None, description="ID раздела (Chapter)"),) -> QuizResponse:
     return await get_quiz_utils(session, count, ai_count, gen_count, topic_id, chapter_id)
@@ -260,3 +261,17 @@ async def check_ai_question(response: UserAIAnswerForm,
                             session: Annotated[AsyncSession, Depends(get_session)],
                             settings: Annotated[DefaultSettings, Depends(get_settings)]):
     return await check_ai_question_utils(response.question_id, response.text, session, settings.API_KEY)
+
+
+@api_router.get('/quiz/get_question_count',
+            status_code=status.HTTP_200_OK,
+            responses={
+                     status.HTTP_401_UNAUTHORIZED: {
+                         "descriprion": "Non authorized"
+                     }
+                 })
+async def get_question_count(session: Annotated[AsyncSession, Depends(get_session)],
+                             topic_id: Optional[UUID] = Query(None, description="ID темы (Topic)"),
+                             chapter_id: Optional[UUID] = Query(None, description="ID раздела (Chapter)")
+                             ):
+    return await get_question_count_utils(topic_id, chapter_id, session)
