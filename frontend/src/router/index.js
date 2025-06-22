@@ -2,11 +2,6 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
   {
-    path: '/',
-    name: 'Welcome',
-    component: () => import('../pages/start/index.vue')
-  },
-  {
     path: '/login',
     name: 'Login Page',
     component: () => import('../pages/login/index.vue'),
@@ -34,7 +29,7 @@ const routes = [
     component: () => import('../pages/debug/index.vue')
   },
   {
-    path: '/textbook',
+    path: '/',
     name: 'Textbook',
     component: () => import('../pages/textbook/index.vue')
   },

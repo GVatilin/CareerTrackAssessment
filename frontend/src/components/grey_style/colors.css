@@ -1,8 +1,8 @@
 :root {
-    --color-background: rgb(30, 30, 30);
+    --color-background: #001222;
     --color-dark-text: rgb(0, 0, 0);
     --color-bright-text: rgb(255, 255, 255);
-    --color-container: rgb(200, 200, 200);
+    --color-container: #B6D9FC;
     --color-underline-first: rgb(0, 255, 255);
     --color-underline-second: rgb(255, 0, 255);
     --color-red: rgb(255, 0, 0);

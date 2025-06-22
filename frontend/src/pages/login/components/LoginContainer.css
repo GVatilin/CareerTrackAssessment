@@ -13,7 +13,7 @@
 
 .container {
     pointer-events: all;
-    background: var(--color-container);
+    background: #fff;
     border-radius: 50px;
 
     display: flex;
