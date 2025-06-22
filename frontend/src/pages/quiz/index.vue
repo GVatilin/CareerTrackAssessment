@@ -1,8 +1,8 @@
 <template>
   <div>
     <!-- Top navbar -->
+    <invalidUserPanel v-show="user.username == 'Guest'"/>
     <NavBar :username="user.username" />
-
     <div class="quiz-layout">
       <main class="main-content">
         <div v-if="!quizStarted" class="card setup-card">
@@ -178,6 +178,7 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import NavBar from '@/components/NavBar.vue'
+import invalidUserPanel from "../../components/NotRegistered.vue"
 
 // Пользователь (для NavBar)
 const user = ref({ username: 'Loading…' })

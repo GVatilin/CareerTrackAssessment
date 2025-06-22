@@ -1,5 +1,6 @@
 <template>
   <div class="profile-page">
+    <invalidUserPanel v-show="user.username == 'Guest'"/>
     <NavBar :username="user.username" />
 
     <div class="profile-page__content">
