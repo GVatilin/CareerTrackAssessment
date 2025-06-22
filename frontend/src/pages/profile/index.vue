@@ -6,15 +6,6 @@
       <div class="profile-card">
         <div class="profile-card__info">
           <h2 class="profile-card__username">{{ user.username }}</h2>
-          <p class="profile-card__status">
-            Статус участника:
-            <span :class="statusClass">{{ user.status }}</span>
-          </p>
-
-          <p class="profile-card__tests">
-            Пройдено тестов:
-            <span>{{ testsPassed }}</span>
-          </p>
         </div>
 
         <div
@@ -62,7 +53,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick, computed } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import axios from 'axios'
 import Cropper from 'cropperjs'
 import 'cropperjs/dist/cropper.css'
@@ -74,10 +65,6 @@ const user = ref({
   status: ''
 })
 
-
-const testsPassed = ref(0)
-const currentYear = new Date().getFullYear()
-
 const avatarUrl = ref(null)
 const hover = ref(false)
 const fileInput = ref(null)
@@ -88,10 +75,6 @@ const cropperImage = ref(null)
 const cropWidth = ref(190)
 const cropHeight = ref(190)
 
-
-const statusClass = computed(() =>
-  user.value.status === 'active' ? 'active' : 'inactive'
-)
 
 const getToken = () => {
   const token = localStorage.getItem('chronoJWTToken')
@@ -110,19 +93,6 @@ const fetchUser = async () => {
     user.value.status = data.status || 'inactive'
   } catch (err) {
     console.error('Ошибка при загрузке профиля:', err)
-  }
-}
-
-const fetchStats = async () => {
-  try {
-    const token = getToken()
-    const { data } = await axios.get(
-      `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/user/me/stats?year=${currentYear}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
-    testsPassed.value = data.testsPassed
-  } catch (err) {
-    console.error('Ошибка при загрузке статистики:', err)
   }
 }
 
@@ -206,7 +176,6 @@ const cancelCrop = () => {
 onMounted(async () => {
   await fetchUser()
   await fetchAvatar()
-  await fetchStats()
 })
 </script>
 
@@ -303,6 +272,7 @@ onMounted(async () => {
 .change-text {
   font-size: 1em;
   color: #fff;
+  text-align: center;
 }
 
 .cropper-modal {

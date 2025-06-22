@@ -4,37 +4,20 @@
     <NavBar :username="user.username" />
 
     <div class="quiz-layout">
-      <!-- Sidebar: список глав -->
-      <aside class="sidebar" v-if="chapters.length">
-        <button class="back-btn" @click="goBack">←</button>
-        <h2 class="sidebar-title">Главы</h2>
-        <ul class="topics">
-          <li
-            v-for="c in chapters"
-            :key="c.id"
-            :class="{ active: c.id === params.chapter_id }"
-            @click="selectChapter(c.id)"
-          >
-            {{ c.name }}
-          </li>
-        </ul>
-      </aside>
-
-      <!-- Main content -->
       <main class="main-content">
         <div v-if="!quizStarted" class="card setup-card">
           <h1 class="page-title">Создать квиз</h1>
 
           <!-- Выбор главы -->
           <div class="form-field">
-            <label>Глава</label>
+            <label>Направление</label>
             <select v-model="params.chapter_id">
-              <option :value="null">— Любая глава —</option>
+              <option :value="null">— Выберите направление —</option>
               <option v-for="c in chapters" :key="c.id" :value="c.id">{{ c.name }}</option>
             </select>
           </div>
 
-          <!-- Выбор темы (опционально, зависит от главы) -->
+          <!-- Выбор темы -->
           <div class="form-field" v-if="filteredTopics.length">
             <label>Тема <span class="text-muted">(необязательно)</span></label>
             <select v-model="params.topic_id">
@@ -46,23 +29,49 @@
           <!-- Настройка количества вопросов -->
           <div class="form-field inline">
             <label>Обычные вопросы</label>
-            <input type="number" v-model.number="params.n" min="0" />
+            <input
+              type="number"
+              v-model.number="params.n"
+              min="0"
+              :max="maxCount.total"
+            />
+            <span class="available-count">
+              доступно {{ maxCount.total ?? 0 }}
+            </span>
           </div>
           <div class="form-field inline">
-            <label>AI‑проверяемые</label>
-            <input type="number" v-model.number="params.k" min="0" />
+            <label>AI-проверяемые</label>
+            <input
+              type="number"
+              v-model.number="params.k"
+              min="0"
+              :max="maxCount.ai"
+            />
+            <span class="available-count">
+              доступно {{ maxCount.ai ?? 0 }}
+            </span>
           </div>
           <div class="form-field inline">
             <label>AI-генерируемые</label>
-            <input type="number" v-model.number="params.ai_compose" min="0" />
+            <input
+              type="number"
+              v-model.number="params.ai_compose"
+              min="0"
+            />
+            <!-- для генерируемых вопросов лимит не выводим -->
           </div>
 
           <button
             class="button-primary w-full"
             @click="startQuiz"
-            :disabled="!params.chapter_id && !params.topic_id"
+            :disabled="
+              loadingQuiz ||
+              (!params.chapter_id && !params.topic_id) ||
+              params.n > maxCount.total ||
+              params.k > maxCount.ai
+            "
           >
-            Начать квиз
+            {{ loadingQuiz ? 'Составляем квиз' : 'Начать квиз' }}
           </button>
         </div>
 
@@ -139,7 +148,13 @@
 
           <!-- Отправка результатов -->
           <div v-if="currentIndex === total - 1 && !showResult" class="submit-area">
-            <button class="button-primary" @click="submit">Отправить</button>
+            <button
+              class="button-primary"
+              @click="submit"
+              :disabled="checkingQuiz"
+            >
+              {{ checkingQuiz ? 'Проверяем квиз' : 'Отправить' }}
+            </button>
           </div>
 
           <!-- Итог -->
@@ -203,12 +218,6 @@ onMounted(async () => {
   topics.value = topRes.data
 })
 
-// Выбор главы
-function selectChapter(id) {
-  params.chapter_id = id
-  params.topic_id = null
-}
-
 watch(
   () => params.chapter_id,
   () => {
@@ -244,46 +253,55 @@ const result = reactive({
 const total = computed(() => questions.value.length)
 const current = computed(() => questions.value[currentIndex.value] || {})
 
-function goBack() {
-  window.history.length > 1 && window.history.back()
-}
+const maxCount = reactive({
+  total: null,
+  ai: null,
+})
+
+const loadingQuiz = ref(false)
+const checkingQuiz = ref(false)
 
 // Старт квиза
 async function startQuiz() {
+  loadingQuiz.value = true
   const base = `http://${process.env.VUE_APP_BACKEND_URL}:8080`
   const p = { n: params.n, k: params.k, m: params.ai_compose }
   if (params.chapter_id) p.chapter_id = params.chapter_id
   if (params.topic_id) p.topic_id = params.topic_id
 
-  const { data } = await axios.get(`${base}/api/v1/question/quiz/get`, { params: p })
-  const qs = [
-    ...data.questions.map(q => ({ ...q, ai: false })),
-    ...data.ai_questions.map(q => ({ ...q, ai: true })),
-    ...data.gen_question.map((text, idx) => ({
-      id: `gen_${idx}`,
-      description: text,
-      ai: true,
-      type: 0,
-      answers: []
-    }))
-  ]
-  questions.value = qs
-  quizStarted.value = true
-  genQuestions.value = data.gen_question
+  try {
+    const { data } = await axios.get(`${base}/api/v1/question/quiz/get`, { params: p })
+    const qs = [
+      ...data.questions.map(q => ({ ...q, ai: false })),
+      ...data.ai_questions.map(q => ({ ...q, ai: true })),
+      ...data.gen_question.map((text, idx) => ({
+        id: `gen_${idx}`,
+        description: text,
+        ai: true,
+        type: 0,
+        answers: []
+      }))
+    ]
+    questions.value = qs
+    quizStarted.value = true
+    genQuestions.value = data.gen_question
 
-  console.log(qs)
+    console.log(qs)
 
-  questions.value.forEach(q => {
-    if (q.ai && q.id.startsWith('gen_')) {
-      userGenAnswers[q.id] = ''           // для gen_question
-    }
-    else if (q.ai) {
-      userAI[q.id] = ''                   // для ai_questions
-    }
-    else {
-      userAnswers[q.id] = q.type === 1 ? [] : null
-    }
-  })
+    questions.value.forEach(q => {
+      if (q.ai && q.id.startsWith('gen_')) {
+        userGenAnswers[q.id] = ''           // для gen_question
+      }
+      else if (q.ai) {
+        userAI[q.id] = ''                   // для ai_questions
+      }
+      else {
+        userAnswers[q.id] = q.type === 1 ? [] : null
+      }
+    })
+  } finally {
+      loadingQuiz.value = false
+  }
 }
 
 // Навигация
@@ -319,6 +337,7 @@ function getToken() {
 }
 
 async function submit() {
+  checkingQuiz.value = true
   const payload = {
     answers: Object.entries(userAnswers).map(([qid, sel]) => ({
       question_id: qid,
@@ -346,7 +365,50 @@ async function submit() {
   result.aiReviewRequired = data.ai_review_required
   result.answers = data.answers || []
   showResult.value = true
+  checkingQuiz.value = false
 }
+
+// Функция для запроса количества вопросов
+async function updateQuestionCount() {
+  // если ни глава, ни тема не выбраны — сбрасываем
+  if (!params.chapter_id && !params.topic_id) {
+    maxCount.total = null
+    maxCount.ai = null
+    return
+  }
+
+  const base = `http://${process.env.VUE_APP_BACKEND_URL}:8080`
+  const query = {}
+  if (params.topic_id) {
+    query.topic_id = params.topic_id
+  } else {
+    query.chapter_id = params.chapter_id
+  }
+
+  try {
+    const { data } = await axios.get(
+      `${base}/api/v1/question/quiz/get_question_count`,
+      { params: query }
+    )
+    maxCount.total = data.count
+    maxCount.ai    = data.ai_count
+
+    // Не даём params.n и params.k превысить новые лимиты
+    if (params.n > data.count) params.n = data.count
+    if (params.k > data.ai_count) params.k = data.ai_count
+  } catch (e) {
+    console.error('Не удалось получить количество вопросов:', e)
+  }
+}
+
+// При смене chapter_id — сбрасываем topic_id и запрашиваем count
+watch(() => params.chapter_id, () => {
+  params.topic_id = null
+  updateQuestionCount()
+})
+
+// При смене topic_id — просто запрашиваем count
+watch(() => params.topic_id, updateQuestionCount)
 </script>
 
 <style>
@@ -430,7 +492,7 @@ body {
   border: 1px solid #ececec;
   border-radius: 6px;
   padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05)
 }
 .mt-4 {
   margin-top: 1.5rem;
@@ -462,7 +524,7 @@ body {
 }
 
 .button-primary {
-  background: var(--color-primary);
+  background: #38a169;
   color: #fff;
   border: none;
   border-radius: 4px;
@@ -472,7 +534,7 @@ body {
   transition: background 0.2s;
 }
 .button-primary:hover {
-  background: #00979d;
+  background: #2f855a;
 }
 .button-primary:disabled {
   opacity: 0.6;
@@ -533,6 +595,7 @@ body {
   border: 1px solid var(--color-border);
   border-radius: 4px;
   resize: vertical;
+  box-sizing: border-box;
 }
 .answer-input:focus {
   border-color: var(--color-primary);
@@ -581,5 +644,27 @@ body {
   .button-ghost {
     width: 100%;
   }
+}
+
+.form-field.inline label {
+  flex: 0 0 8rem; /* фиксированная ширина метки для выравнивания */
+  margin: 0;
+  padding-right: 0.5rem;
+}
+
+.form-field.inline select {
+  flex: 1;
+}
+
+.form-field.inline input[type='number'] {
+  flex: 0 0 auto;
+  width: 2.3rem;
+}
+
+.available-count {
+  margin-left: 0.5rem;
+  font-size: 0.875rem;
+  color: #666666;
+  white-space: nowrap;
 }
 </style>

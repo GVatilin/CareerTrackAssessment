@@ -171,7 +171,7 @@ async def remove_answer(answer_id: UUID, session: AsyncSession):
 
 async def get_quiz_utils(session: AsyncSession, count: int, ai_count: int, 
                          gen_count: int, topic_id: UUID, chapter_id: UUID) -> QuizResponse:
-    if (topic_id is None and chapter_id is None) or (topic_id is None):
+    if (topic_id is None and chapter_id is None):
         raise HTTPException(
             404,
             detail="Укажите либо chapter_id и topic_id, либо chapter_id"
@@ -288,3 +288,39 @@ async def submit_quiz_utils(submission: QuizSubmission, session: AsyncSession):
         "ai_answers_received": feedback_res,
         "ai_review_required": len(ai_feedback),
     }
+
+
+async def get_question_count_utils(topic_id: UUID, chapter_id: UUID, session: AsyncSession):
+    if topic_id:
+        q1 = select(func.count(Question.id)).where(Question.topic_id == topic_id)
+        count = await session.scalar(q1)
+
+        q2 = select(func.count(AIQuestion.id)).where(AIQuestion.topic_id == topic_id)
+        ai_count = await session.scalar(q2)
+
+        return {
+            "count": count,
+            "ai_count": ai_count
+        }
+
+    q1 = (
+        select(func.count(Question.id))
+        .select_from(Question)
+        .join(Question.topic)
+        .where(Topic.chapter_id == chapter_id)
+    )
+    count = await session.scalar(q1)
+
+    q2 = (
+        select(func.count(AIQuestion.id))
+        .select_from(AIQuestion)
+        .join(AIQuestion.topic)
+        .where(Topic.chapter_id == chapter_id)
+    )
+    ai_count = await session.scalar(q2)
+
+    return {
+        "count": count,
+        "ai_count": ai_count
+    }
+    
