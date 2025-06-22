@@ -59,6 +59,7 @@ import axios from 'axios'
 import Cropper from 'cropperjs'
 import 'cropperjs/dist/cropper.css'
 import NavBar from '../../components/NavBar.vue'
+import invalidUserPanel from "../../components/NotRegistered.vue"
 
 
 const user = ref({
@@ -83,17 +84,14 @@ const getToken = () => {
   return token
 }
 
-const fetchUser = async () => {
+async function fetchUser() {
   try {
-    const token = getToken()
-    const { data } = await axios.get(
-      `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/user/me`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
-    user.value.username = data.username
-    user.value.status = data.status || 'inactive'
-  } catch (err) {
-    console.error('Ошибка при загрузке профиля:', err)
+    const { data } = await axios.get(`http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/user/me`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    })
+    user.value = data
+  } catch {
+    user.value.username = 'Guest'
   }
 }
 

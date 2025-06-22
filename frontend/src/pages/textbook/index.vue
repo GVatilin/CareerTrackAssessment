@@ -186,6 +186,7 @@
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import NavBar from "../../components/NavBar.vue";
+import invalidUserPanel from "../../components/NotRegistered.vue"
 
 const user = ref({ username: "Loading..." });
 const chapters = ref([])
@@ -217,26 +218,16 @@ const getToken = () => {
   return token
 }
 
-const getUser = async () => {
+async function fetchUser() {
   try {
-    const token = getToken()
-    const { data } = await axios.get(
-      `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/user/me`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-    )
-    return data
+    const { data } = await axios.get(`http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/user/me`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    })
+    user.value = data
   } catch {
-    return -1
+    user.value.username = 'Guest'
   }
 }
-
-const fetchUser = async () => {
-  user.value = await getUser();
-};
 
 const fetchChapters = () =>
   axios.get(

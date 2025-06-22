@@ -90,6 +90,7 @@
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import NavBar from '@/components/NavBar.vue'
+import invalidUserPanel from "../../components/NotRegistered.vue"
 
 const chapters = ref([])
 const topics   = ref([])
@@ -124,11 +125,22 @@ const fetchAll = async () => {
   topics.value   = top.data
 }
 
+async function fetchUser() {
+  try {
+    const { data } = await axios.get(`http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/user/me`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    })
+    user.value = data
+  } catch {
+    user.value.username = 'Guest'
+  }
+}
+
 onMounted(async () => {
-  await fetchAll()
-  const token = getToken()
-  const { data } = await axios.get(`http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/user/me`, { headers: { Authorization: `Bearer ${token}` } })
-  user.value.username = data.username
+  await fetchUser()
+  if (user.value.username != 'Guest') {
+    await fetchAll()
+  }
 })
 
 const topicsForQuestion = computed(() => topics.value.filter(t => t.chapter_id === questionChapterId.value))
