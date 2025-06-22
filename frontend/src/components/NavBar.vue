@@ -9,13 +9,13 @@
         <nav class="app__nav">
         <ul class="app__tabs">
             <li class="app__tab">
-            <router-link to="/textbook" class="nav-link" active-class="active-link">Учебник</router-link>
+            <router-link to="/" class="nav-link" active-class="active-link">Учебник</router-link>
             </li>
             <li class="app__tab">
             <router-link to="/quiz" class="nav-link" active-class="active-link">Квизы</router-link>
             </li>
             <li class="app__tab">
-            <router-link to="/activity" class="nav-link" active-class="active-link">Добавить вопросы</router-link>
+            <router-link to="/add" class="nav-link" active-class="active-link">Добавить вопросы</router-link>
             </li>
         </ul>
         </nav>
