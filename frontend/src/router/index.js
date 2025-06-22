@@ -30,7 +30,7 @@ const routes = [
   },
   {
     path: '/',
-    name: 'Index',
+    name: 'Textbook',
     component: () => import('../pages/textbook/index.vue')
   },
   {
