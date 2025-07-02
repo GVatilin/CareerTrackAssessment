@@ -203,6 +203,10 @@ async function fetchUser() {
   }
 }
 
+const STORAGE_PARAMS = 'quizParams'
+const STORAGE_QUIZ   = 'quizState'
+const savedParams = JSON.parse(localStorage.getItem(STORAGE_PARAMS) || '{}')
+
 // Данные 
 const chapters = ref([])
 const topics = ref([])
@@ -214,26 +218,9 @@ const params = reactive({
   ai_compose: 2,
   chapter_id: null,
   topic_id: null,
+  ...savedParams,
 })
 
-// Получаем главы и темы
-onMounted(async () => {
-  await fetchUser()
-  const base = `http://${process.env.VUE_APP_BACKEND_URL}:8080`
-  const [chapRes, topRes] = await Promise.all([
-    axios.get(`${base}/api/v1/topic/get_chapters`),
-    axios.get(`${base}/api/v1/topic/get_topics`),
-  ])
-  chapters.value = chapRes.data
-  topics.value = topRes.data
-})
-
-watch(
-  () => params.chapter_id,
-  () => {
-    params.topic_id = null
-  }
-)
 
 // Список тем, фильтрованных по главе
 const filteredTopics = computed(() => {
@@ -274,6 +261,8 @@ const checkingQuiz = ref(false)
 // Старт квиза
 async function startQuiz() {
   loadingQuiz.value = true
+  localStorage.removeItem(STORAGE_QUIZ)
+
   const base = `http://${process.env.VUE_APP_BACKEND_URL}:8080`
   const p = { n: params.n, k: params.k, m: params.ai_compose }
   if (params.chapter_id) p.chapter_id = params.chapter_id
@@ -292,12 +281,14 @@ async function startQuiz() {
         answers: []
       }))
     ]
+
+    resetLocalState()
     questions.value = qs
     quizStarted.value = true
     genQuestions.value = data.gen_question
 
     console.log(qs)
-
+    
     questions.value.forEach(q => {
       if (q.ai && q.id.startsWith('gen_')) {
         userGenAnswers[q.id] = ''           // для gen_question
@@ -309,6 +300,8 @@ async function startQuiz() {
         userAnswers[q.id] = q.type === 1 ? [] : null
       }
     })
+
+    saveQuizState()
   } finally {
       loadingQuiz.value = false
   }
@@ -376,6 +369,7 @@ async function submit() {
   result.answers = data.answers || []
   showResult.value = true
   checkingQuiz.value = false
+  saveQuizState()
 }
 
 // Функция для запроса количества вопросов
@@ -419,6 +413,111 @@ watch(() => params.chapter_id, () => {
 
 // При смене topic_id — просто запрашиваем count
 watch(() => params.topic_id, updateQuestionCount)
+
+// ─── NEW ───────────────────────────────────────────────────────────────────
+function saveQuizState() {
+  try {
+    if (!quizStarted.value) return
+    const plainResult = JSON.parse(JSON.stringify(result))
+
+    localStorage.setItem(STORAGE_QUIZ, JSON.stringify({
+      quizStarted:    quizStarted.value,
+      questions:      questions.value,
+      currentIndex:   currentIndex.value,
+      showResult:     showResult.value,
+      userAnswers:    JSON.parse(JSON.stringify(userAnswers)),
+      userAI:         JSON.parse(JSON.stringify(userAI)),
+      userGenAnswers: JSON.parse(JSON.stringify(userGenAnswers)),
+      result:         plainResult,
+    }))
+  } catch (e) {
+    console.error('Не удалось сохранить состояние квиза:', e)
+  }
+}
+
+function restoreQuizState() {
+  const saved = localStorage.getItem(STORAGE_QUIZ)
+  if (!saved) return
+  try {
+    const data = JSON.parse(saved)
+    if (!data.quizStarted) return
+
+    quizStarted.value  = data.quizStarted
+    questions.value    = data.questions || []
+    currentIndex.value = data.currentIndex || 0
+    showResult.value   = data.showResult || false
+
+    Object.assign(userAnswers,    data.userAnswers    || {})
+    Object.assign(userAI,         data.userAI         || {})
+    Object.assign(userGenAnswers, data.userGenAnswers || {})
+    Object.assign(result,         data.result         || {})
+  } catch (e) {
+    console.error('Не удалось восстановить состояние квиза:', e)
+    localStorage.removeItem(STORAGE_QUIZ)
+  }
+}
+
+function resetLocalState() {
+  questions.value    = []
+  currentIndex.value = 0
+  quizStarted.value  = false
+  showResult.value   = false
+
+  Object.keys(userAnswers)   .forEach(k => delete userAnswers[k])
+  Object.keys(userAI)        .forEach(k => delete userAI[k])
+  Object.keys(userGenAnswers).forEach(k => delete userGenAnswers[k])
+
+  Object.assign(result, {
+    totalMc:          0,
+    correctCount:     0,
+    scorePercent:     0,
+    aiReview:         '',
+    aiReviewRequired: 0,
+    answers:          [],
+  })
+}
+
+// Получаем главы и темы
+onMounted(async () => {
+  await fetchUser()
+  const base = `http://${process.env.VUE_APP_BACKEND_URL}:8080`
+  const [chapRes, topRes] = await Promise.all([
+    axios.get(`${base}/api/v1/topic/get_chapters`),
+    axios.get(`${base}/api/v1/topic/get_topics`),
+  ])
+  chapters.value = chapRes.data
+  topics.value = topRes.data
+
+  restoreQuizState()
+
+  if (params.chapter_id || params.topic_id) {
+    updateQuestionCount()
+  }
+})
+
+watch(
+  () => params.chapter_id,
+  () => {
+    params.topic_id = null
+  }
+)
+
+watch(params,
+  () => localStorage.setItem(STORAGE_PARAMS, JSON.stringify(params)),
+  { deep: true }
+)
+
+watch([
+  questions,
+  currentIndex,
+  userAnswers,
+  userAI,
+  userGenAnswers,
+  showResult,
+  result,
+  quizStarted,
+], saveQuizState, { deep: true })
+
 </script>
 
 <style>
