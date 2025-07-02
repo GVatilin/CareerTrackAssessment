@@ -90,9 +90,9 @@
                 :key="ans.id"
                 class="answer-option"
                 :class="{
-                  selected: isSelected(ans.id),
-                  correct: showResult && isCorrect(current.id, ans.id),
-                  incorrect: showResult && !isCorrect(current.id, ans.id),
+                  selected:   isSelected(ans.id),
+                  correct:    showResult && isCorrect(current.id, ans.id),
+                  incorrect:  showResult && isSelected(ans.id) && !isCorrect(current.id, ans.id)
                 }"
               >
                 <label>
