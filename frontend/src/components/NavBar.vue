@@ -25,11 +25,11 @@
         </router-link>
         <router-link to="/profile" class="nav-link">
             <img
-            :src="avatarUrl"
-            alt="User Avatar"
-            class="app__avatar"
-            @click="triggerFileInput"
-          />
+              :src="avatarUrl || defaultAvatar"
+              alt="User Avatar"
+              class="app__avatar"
+              @click="triggerFileInput"
+            />
         </router-link>
         </div>
     </header>
@@ -39,6 +39,7 @@
 <script setup>
 import { defineProps, ref, onMounted } from 'vue'
 import axios from 'axios'
+import defaultAvatar from '../../public/ppr_profile.png'
 
 const props = defineProps({
   username: {

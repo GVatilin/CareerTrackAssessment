@@ -5,17 +5,14 @@
 
     <div class="profile-page__content">
       <div class="profile-card">
-        <div class="profile-card__info">
-          <h2 class="profile-card__username">{{ user.username }}</h2>
-        </div>
-
+        <!-- 1. Аватар слева -->
         <div
           class="profile-card__avatar-container"
           @mouseenter="hover = true"
           @mouseleave="hover = false"
         >
           <img
-            :src="avatarUrl"
+            :src="avatarUrl || defaultAvatar"
             alt="User Avatar"
             class="profile-card__avatar-image"
             @click="triggerFileInput"
@@ -29,6 +26,18 @@
           <div v-if="hover" class="overlay" @click="triggerFileInput">
             <span class="change-text">Изменить аватарку</span>
           </div>
+        </div>
+
+        <!-- 2. Имя + кнопка столбиком -->
+        <div class="profile-card__info">
+          <h2 class="profile-card__username">{{ user.username }}</h2>
+
+          <button class="logout-button" @click="logout">
+            <svg class="logout-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+              <path d="M16 17l5-5-5-5M21 12H9M13 5v-2a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-2"/>
+            </svg>
+            Log Out
+          </button>
         </div>
       </div>
     </div>
@@ -60,7 +69,8 @@ import Cropper from 'cropperjs'
 import 'cropperjs/dist/cropper.css'
 import NavBar from '../../components/NavBar.vue'
 import invalidUserPanel from "../../components/NotRegistered.vue"
-
+import { useRouter } from 'vue-router'
+import defaultAvatar from '../../../public/ppr_profile.png'
 
 const user = ref({
   username: 'Loading...',
@@ -76,7 +86,7 @@ const cropperInstance = ref(null)
 const cropperImage = ref(null)
 const cropWidth = ref(190)
 const cropHeight = ref(190)
-
+const router = useRouter()
 
 const getToken = () => {
   const token = localStorage.getItem('chronoJWTToken')
@@ -93,6 +103,11 @@ async function fetchUser() {
   } catch {
     user.value.username = 'Guest'
   }
+}
+
+const logout = () => {
+  localStorage.removeItem('chronoJWTToken')
+  router.push('/login')
 }
 
 const fetchAvatar = async () => {
@@ -188,7 +203,7 @@ onMounted(async () => {
 
 .profile-card {
   display: flex;
-  flex-direction: row-reverse;
+  flex-direction: row;
   align-items: flex-start;
   background-color: #fff;
   border-radius: 12px;
@@ -197,13 +212,16 @@ onMounted(async () => {
   max-width: 600px;
   width: 100%;
   gap: 1.5rem;
+  align-items: center;
 }
 
 .profile-card__info {
   flex: 1;
   display: flex;
-  flex-direction: column;
+  flex-direction: column;   /* имя и кнопка — столбиком */
+  justify-content: center;
 }
+
 
 .profile-card__username {
   font-size: 1.75rem;
@@ -325,4 +343,25 @@ onMounted(async () => {
   background-color: #c53030;
   color: #fff;
 }
+
+.logout-button {
+  margin-top: 1rem;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #c53030;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.logout-button .logout-icon {
+  width: 1em;
+  height: 1em;
+  margin-right: 0.5em;
+  fill: currentColor;
+}
+
+
 </style>
