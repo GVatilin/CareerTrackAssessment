@@ -74,110 +74,122 @@
             {{ loadingQuiz ? 'Составляем квиз' : 'Начать квиз' }}
           </button>
         </div>
+      
+       <div v-else class="runner-wrapper">
+          <div class="card runner-card">
+            <div class="question-header">
+              <h2 class="question-title">Вопрос {{ currentIndex + 1 }} из {{ total }}</h2>
+            </div>
 
-        <div v-else class="card runner-card">
-          <div class="question-header">
-            <h2 class="question-title">Вопрос {{ currentIndex + 1 }} из {{ total }}</h2>
-          </div>
+            <div class="question-body">
+              <p class="description" v-html="current.description"></p>
 
-          <div class="question-body">
-            <p class="description" v-html="current.description"></p>
+              <!-- Варианты ответа -->
+              <template v-if="!current.ai">
+                <div
+                  v-for="ans in current.answers"
+                  :key="ans.id"
+                  class="answer-option"
+                  :class="{
+                    selected:   isSelected(ans.id),
+                    correct:    showResult && isCorrect(current.id, ans.id),
+                    incorrect:  showResult && isSelected(ans.id) && !isCorrect(current.id, ans.id)
+                  }"
+                >
+                  <label>
+                    <input
+                      :type="current.type === 1 ? 'checkbox' : 'radio'"
+                      :name="current.id"
+                      :value="ans.id"
+                      v-model="userAnswers[current.id]"
+                    />
+                    <span>{{ ans.text }}</span>
+                  </label>
+                </div>
+              </template>
+              
+              <!-- AI‑вопрос (свободный ввод) -->
+              <!-- AI-вопросы: свободный ввод -->
+              <template v-else>
+                <!-- если вопрос сгенерированный (id начинается с "gen_") -->
+                <textarea
+                  v-if="current.id && current.id.startsWith('gen_')"
+                  class="answer-input"
+                  v-model="userGenAnswers[current.id]"
+                  rows="4"
+                  placeholder="Ваш ответ..."
+                ></textarea>
 
-            <!-- Варианты ответа -->
-            <template v-if="!current.ai">
-              <div
-                v-for="ans in current.answers"
-                :key="ans.id"
-                class="answer-option"
-                :class="{
-                  selected:   isSelected(ans.id),
-                  correct:    showResult && isCorrect(current.id, ans.id),
-                  incorrect:  showResult && isSelected(ans.id) && !isCorrect(current.id, ans.id)
-                }"
+                <!-- обычный AI-вопрос из базы -->
+                <textarea
+                  v-else
+                  class="answer-input"
+                  v-model="userAI[current.id]"
+                  rows="4"
+                  placeholder="Ваш ответ..."
+                ></textarea>
+              </template>
+
+            </div>
+
+            <!-- Результат по текущему вопросу -->
+            <div v-if="showResult" class="result-section">
+              <p v-if="isQuestionRight(current.id) === true"  class="success-message">Правильно!</p>
+              <p v-if="isQuestionRight(current.id) === false" class="error-message">Неправильно</p>
+            </div>
+            <div v-if="showResult" class="result-section">
+              <p>{{ getExplanation(current.id) }}</p>
+            </div>
+
+            <!-- Шаблон: заменили логику вывода кнопок -->
+            <div class="nav-buttons">
+              <!-- Кнопка «Назад» -->
+              <button
+                class="button-ghost"
+                @click="prev"
+                :disabled="currentIndex === 0"
               >
-                <label>
-                  <input
-                    :type="current.type === 1 ? 'checkbox' : 'radio'"
-                    :name="current.id"
-                    :value="ans.id"
-                    v-model="userAnswers[current.id]"
-                  />
-                  <span>{{ ans.text }}</span>
-                </label>
-              </div>
-            </template>
-            
-            <!-- AI‑вопрос (свободный ввод) -->
-            <!-- AI-вопросы: свободный ввод -->
-            <template v-else>
-              <!-- если вопрос сгенерированный (id начинается с "gen_") -->
-              <textarea
-                v-if="current.id && current.id.startsWith('gen_')"
-                class="answer-input"
-                v-model="userGenAnswers[current.id]"
-                rows="4"
-                placeholder="Ваш ответ..."
-              ></textarea>
+                ← Назад
+              </button>
 
-              <!-- обычный AI-вопрос из базы -->
-              <textarea
-                v-else
-                class="answer-input"
-                v-model="userAI[current.id]"
-                rows="4"
-                placeholder="Ваш ответ..."
-              ></textarea>
-            </template>
-
-          </div>
-
-          <!-- Результат по текущему вопросу -->
-          <div v-if="showResult" class="result-section">
-            <p v-if="isQuestionRight(current.id) === true"  class="success-message">Правильно!</p>
-            <p v-if="isQuestionRight(current.id) === false" class="error-message">Неправильно</p>
-          </div>
-          <div v-if="showResult" class="result-section">
-            <p>{{ getExplanation(current.id) }}</p>
-          </div>
-
-          <div class="nav-buttons">
-            <button
-              class="button-ghost"
-              @click="prev"
-              :disabled="currentIndex === 0"
-            >
-              ← Назад
-            </button>
-
-            <!-- пока не последняя страница — обычная «Вперёд» -->
-            <button
-              v-if="currentIndex < total - 1"
-              class="button-ghost"
+              <button
+                v-if="currentIndex < total - 1"
+                class="button-ghost"
               @click="next"
-            >
-              Вперёд →
-            </button>
+              >
+                Вперёд →
+              </button>
 
-            <!-- на последней странице вместо неё — зелёная «Отправить» -->
-            <button
-              v-else
-              class="button-primary"
-              @click="submit"
-              :disabled="checkingQuiz"
-            >
-              {{ checkingQuiz ? 'Проверяем квиз' : 'Отправить' }}
-            </button>
+              <!-- «Отправить» (только на последней странице и до результатов) -->
+              <button
+                v-else-if="!showResult"
+                class="button-primary"
+                @click="submit"
+                :disabled="checkingQuiz"
+              >
+                {{ checkingQuiz ? 'Проверяем квиз' : 'Отправить' }}
+              </button>
+            </div>
+
+
+
+            <!-- Итог -->
+            <div v-if="currentIndex === total - 1 && showResult" class="final-result card mt-4">
+              <h3>
+                Вы ответили правильно:
+                {{ result.correctCount }} из {{ result.totalMc }} ({{ result.scorePercent }}%)
+              </h3>
+              <p class="ai-review" v-if="result.aiReview">{{ result.aiReview }}</p>
+            </div>
           </div>
 
-          <!-- Итог -->
-          <div v-if="currentIndex === total - 1 && showResult" class="final-result card mt-4">
-            <h3>
-              Вы ответили правильно:
-              {{ result.correctCount }} из {{ result.totalMc }} ({{ result.scorePercent }}%)
-            </h3>
-            <p class="ai-review" v-if="result.aiReview">{{ result.aiReview }}</p>
-          </div>
-        </div>
+          <button
+            class="button-ghost new-quiz-button"
+            @click="resetQuiz"
+          >
+            Начать новый квиз
+          </button>
+        </div>  
       </main>
     </div>
   </div>
@@ -518,6 +530,12 @@ watch([
   quizStarted,
 ], saveQuizState, { deep: true })
 
+function resetQuiz() {
+  resetLocalState()
+  quizStarted.value = false
+  localStorage.removeItem(STORAGE_QUIZ)
+  localStorage.removeItem(STORAGE_PARAMS)
+}
 </script>
 
 <style>
@@ -823,4 +841,27 @@ body {
 .nav-buttons .button-primary {
   min-width: 12rem;
 }
+
+
+.runner-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+/* кнопка абсолютно позиционируется правее карточки и НЕ влияет на её размер */
+.new-quiz-button {
+  position: absolute;
+  top: 0;
+  left: calc(100% + 0.7rem);   /* справа на 1 rem от края карточки */
+  white-space: nowrap;
+
+  padding: 0.6rem 1.25em;    /* больше внутренние отступы */
+  font-size: 1rem;       /* чуть больший текст */
+  border-radius: 6px;
+}
+
+.card.runner-card {
+  min-height: 60vh;   /* 60 % высоты окна вместо относительных 60 % родителя */
+}
+
 </style>
