@@ -140,15 +140,27 @@
             <p>{{ getExplanation(current.id) }}</p>
           </div>
 
-          <!-- Навигация -->
           <div class="nav-buttons">
-            <button class="button-ghost" @click="prev" :disabled="currentIndex === 0">← Назад</button>
-            <button class="button-ghost" @click="next" :disabled="currentIndex >= total - 1">Вперёд →</button>
-          </div>
-
-          <!-- Отправка результатов -->
-          <div v-if="currentIndex === total - 1 && !showResult" class="submit-area">
             <button
+              class="button-ghost"
+              @click="prev"
+              :disabled="currentIndex === 0"
+            >
+              ← Назад
+            </button>
+
+            <!-- пока не последняя страница — обычная «Вперёд» -->
+            <button
+              v-if="currentIndex < total - 1"
+              class="button-ghost"
+              @click="next"
+            >
+              Вперёд →
+            </button>
+
+            <!-- на последней странице вместо неё — зелёная «Отправить» -->
+            <button
+              v-else
               class="button-primary"
               @click="submit"
               :disabled="checkingQuiz"
@@ -664,5 +676,52 @@ body {
   font-size: 0.875rem;
   color: #666666;
   white-space: nowrap;
+}
+
+.card.setup-card,
+.card.runner-card {
+  min-height: 60%;
+}
+
+.card.setup-card,
+.card.runner-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.card.setup-card .button-primary {
+  margin-top: auto;
+}
+
+.card.runner-card .nav-buttons,
+.card.runner-card .submit-area {
+  margin-top: auto;
+}
+
+.card.runner-card .nav-buttons,
+.card.runner-card .submit-area {
+  background: var(--color-bg);
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.nav-buttons .button-ghost {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+}
+
+.nav-buttons .button-ghost,
+.nav-buttons .button-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-buttons button {
+  min-height: 2.5rem;
+}
+
+.nav-buttons .button-primary {
+  min-width: 12rem;
 }
 </style>
