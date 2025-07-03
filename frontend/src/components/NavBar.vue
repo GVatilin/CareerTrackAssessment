@@ -114,33 +114,6 @@ onMounted(async () => {
   justify-content: center;
 }
 
-.app__tabs {
-  display: flex;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  justify-content: center;
-  align-items: center;
-}
-
-.app__tab {
-  padding: 0 2.5rem;
-  cursor: pointer;
-}
-
-.app__tab:not(:first-child) {
-  border-left: 1px solid #ccc;
-}
-
-.app__tab:hover {
-  color: #3182ce;
-}
-
-.app__tab--active {
-  color: #3182ce;
-  border-bottom: 2px solid #3182ce;
-}
-
 .app__profile {
   position: absolute;
   right: 24px;
@@ -158,15 +131,4 @@ onMounted(async () => {
   border-radius: 50%;
 }
 
-.nav-link {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  text-decoration: none;
-  color: inherit;
-}
-
-.active-link {
-  color: #3182ce;
-}
 </style>
