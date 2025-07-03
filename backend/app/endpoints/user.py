@@ -1,7 +1,7 @@
 from app.database.models import User
 from app.database.connection import get_session
-from app.schemas import UserResponse, UserDebugResponse
-from app.utils.user import get_current_user
+from app.schemas import UserResponse, UserDebugResponse, UpdateUsernameForm
+from app.utils.user import get_current_user, update_username_utils
 
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.future import select
@@ -60,3 +60,22 @@ async def delete_user_by_email(email: str, db: AsyncSession = Depends(get_sessio
             )
         await db.delete(db_user)
     return db_user
+
+
+@api_router.post('/update_username',
+            status_code=status.HTTP_200_OK,
+            responses={
+                     status.HTTP_401_UNAUTHORIZED: {
+                         "descriprion": "Non authorized"
+                     }
+                 })
+async def update_username(username_form: UpdateUsernameForm,
+                          current_user: Annotated[User, Depends(get_current_user)],
+                          session: Annotated[AsyncSession, Depends(get_session)],
+                          ):
+    is_success = await update_username_utils(username_form, current_user, session)
+
+    if is_success:
+        return {"message": "Username updated"}
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, \
+                        detail="Error update username")

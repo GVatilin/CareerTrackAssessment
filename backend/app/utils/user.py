@@ -9,7 +9,7 @@ from sqlalchemy import exc, select
 
 from app.config import DefaultSettings, get_settings
 from app.database.connection import get_session
-from app.schemas import RegistrationForm
+from app.schemas import RegistrationForm, UpdateUsernameForm
 from app.database.models import User, Settings
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -102,3 +102,20 @@ async def get_user_settings(current_user: User, session: AsyncSession) -> Settin
     query = select(Settings).where(Settings.user_id == current_user.id)
     settings = await session.scalar(query)
     return settings
+
+
+async def update_username_utils(username_form: UpdateUsernameForm, 
+                                current_user: User, 
+                                session: AsyncSession) -> bool:
+    query = select(User).where(User.id == current_user.id)
+    res = await session.execute(query)
+    user = res.scalar_one_or_none()
+
+    user.username = username_form.username
+    try:
+        await session.commit()
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    
+    return True
