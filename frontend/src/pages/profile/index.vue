@@ -30,7 +30,29 @@
 
         <!-- 2. Имя + кнопка столбиком -->
         <div class="profile-card__info">
-          <h2 class="profile-card__username">{{ user.username }}</h2>
+          <div class="username-edit">
+            <template v-if="!editUsername">
+              <h2 class="profile-card__username">{{ user.username }}</h2>
+
+              <svg
+                class="edit-icon"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                @click="startEditUsername"
+              >
+                <path
+                  d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.001 1.001 0 000-1.42l-2.34-2.34a1.001 1.001 0 00-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"
+                />
+              </svg>
+              
+            </template>
+
+            <template v-else>
+              <input v-model="newUsername" class="username-input" />
+              <button @click="saveUsername">Сохранить</button>
+              <button @click="cancelEditUsername">Отмена</button>
+            </template>
+          </div>
 
           <button class="logout-button" @click="logout">
             <svg class="logout-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -87,6 +109,8 @@ const cropperImage = ref(null)
 const cropWidth = ref(190)
 const cropHeight = ref(190)
 const router = useRouter()
+const editUsername = ref(false)
+const newUsername  = ref('')
 
 const getToken = () => {
   const token = localStorage.getItem('chronoJWTToken')
@@ -185,6 +209,30 @@ const cancelCrop = () => {
   showCropper.value = false
   URL.revokeObjectURL(selectedImageUrl.value)
   selectedImageUrl.value = ''
+}
+
+const startEditUsername = () => {
+  newUsername.value = user.value.username
+  editUsername.value = true
+}
+
+const cancelEditUsername = () => {
+  editUsername.value = false
+}
+
+const saveUsername = async () => {
+  try {
+    const token = getToken()
+    await axios.post(
+      `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/user/update_username`,
+      { username: newUsername.value },
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    user.value.username = newUsername.value
+    editUsername.value  = false
+  } catch (err) {
+    console.error('Error updating username:', err)
+  }
 }
 
 onMounted(async () => {
@@ -363,5 +411,25 @@ onMounted(async () => {
   fill: currentColor;
 }
 
+.username-edit {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.edit-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  fill: #6b7280;        /* серый */
+  cursor: pointer;
+  transform: translateY(-0.45rem);
+}
+
+.username-input {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 1rem;
+}
 
 </style>
