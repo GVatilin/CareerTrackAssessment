@@ -42,6 +42,8 @@ anyio = "^4.9.0"
 trio = "^0.29.0"
 flask = "^3.1.1"
 flask-admin = "2.0.0a"
+pylatex = "^1.4.2"
+pypandoc = "^1.15"
 
 [build-system]
 requires = ["poetry-core"]

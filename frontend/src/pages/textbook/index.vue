@@ -148,7 +148,7 @@
                 <line x1="4" y1="8" x2="12" y2="16" stroke="#333" stroke-width="2" />
                 <line x1="20" y1="8" x2="12" y2="16" stroke="#333" stroke-width="2" />
               </svg>
-              <span>{{ showExplanation ? 'Скрыть ответ' : 'Показать ответ' }}</span>
+              <span>{{ showExplanation ? 'Скрыть объяснение' : 'Показать объяснение' }}</span>
             </button>
           </div>
 

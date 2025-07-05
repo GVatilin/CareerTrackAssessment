@@ -138,7 +138,7 @@
               <p v-if="isQuestionRight(current.id) === false" class="error-message">Неправильно</p>
             </div>
             <div v-if="showResult" class="result-section">
-              <p>{{ getExplanation(current.id) }}</p>
+              <p v-html="getExplanation(current.id)"></p>
             </div>
 
             <!-- Шаблон: заменили логику вывода кнопок -->
@@ -179,16 +179,25 @@
                 Вы ответили правильно:
                 {{ result.correctCount }} из {{ result.totalMc }} ({{ result.scorePercent }}%)
               </h3>
-              <p class="ai-review" v-if="result.aiReview">{{ result.aiReview }}</p>
+              <p class="ai-review" v-if="result.aiReview" v-html="result.aiReview"></p>
             </div>
           </div>
 
-          <button
-            class="button-ghost new-quiz-button"
-            @click="resetQuiz"
-          >
-            Начать новый квиз
-          </button>
+          <div class="quiz-right-list">
+            <button
+              class="button-ghost"
+              @click="resetQuiz"
+            >
+              Начать новый квиз
+            </button>
+            <button
+              v-if="pdfUrl != null"
+              class="button-ghost"
+              @click="openPdfResults"
+            >
+              Экспортировать результаты тестирования
+            </button>
+          </div>
         </div>  
       </main>
     </div>
@@ -196,7 +205,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import axios from 'axios'
 import NavBar from '@/components/NavBar.vue'
 import invalidUserPanel from "../../components/NotRegistered.vue"
@@ -248,6 +257,8 @@ const userAnswers = reactive({})
 const userAI = reactive({})
 const userGenAnswers = reactive({})
 const genQuestions = ref([])
+const pdfUrl = ref(null)
+const pdfFilename = ref(null)
 
 const showResult = ref(false)
 const result = reactive({
@@ -255,7 +266,6 @@ const result = reactive({
   correctCount: 0,
   scorePercent: 0,
   aiReview: '',
-  aiReviewRequired: 0,
   answers: {},
 })
 
@@ -373,15 +383,77 @@ async function submit() {
     headers: { Authorization: `Bearer ${token}` },
   })
 
-  result.totalMc = data.total_mc
-  result.correctCount = data.correct_mc
+  result.totalMc = data.total_questions
+  result.correctCount = data.total_correct_answers
   result.scorePercent = data.score_percent
-  result.aiReview = data.ai_answers_received
-  result.aiReviewRequired = data.ai_review_required
+  result.aiReview = data.ai_recommendations
   result.answers = data.answers || []
   showResult.value = true
   checkingQuiz.value = false
   saveQuizState()
+  await getPdfResults()
+}
+
+async function getPdfResults() {
+  const resultsData = {
+    answers: result.answers,
+    ai_recommendations: result.aiReview
+  }
+  const token = getToken()
+
+  try {
+    const response1 = await axios.post(
+      `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/docs/task_results_pdf`,
+      resultsData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    )
+    
+    pdfFilename.value = response1.data
+
+    const response2 = await axios.get(
+      `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/docs/task_results_pdf/${pdfFilename.value}`,
+      {
+        responseType: 'blob',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    )
+
+    const blob = new Blob([response2.data], { type: 'application/pdf' })
+    pdfUrl.value = URL.createObjectURL(blob)
+  } catch (error) {
+    console.error('Error generating PDF:', error)
+  }
+}
+
+async function clearPdfResults() {
+  pdfUrl.value = null
+  const token = getToken()
+
+  try {
+    if (pdfFilename.value !== null) {
+      await axios.delete(
+        `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/docs/task_results_pdf/${pdfFilename.value}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      )
+    }
+  } catch (error) {
+    console.error('Error removing PDF:', error)
+  }
+  pdfFilename.value = null
+}
+
+function openPdfResults() {
+  window.open(pdfUrl.value, '_blank');
 }
 
 // Функция для запроса количества вопросов
@@ -484,7 +556,6 @@ function resetLocalState() {
     correctCount:     0,
     scorePercent:     0,
     aiReview:         '',
-    aiReviewRequired: 0,
     answers:          [],
   })
 }
@@ -505,6 +576,10 @@ onMounted(async () => {
   if (params.chapter_id || params.topic_id) {
     updateQuestionCount()
   }
+})
+
+onUnmounted(async () => {
+  await clearPdfResults() 
 })
 
 watch(
@@ -530,11 +605,12 @@ watch([
   quizStarted,
 ], saveQuizState, { deep: true })
 
-function resetQuiz() {
+async function resetQuiz() {
   resetLocalState()
   quizStarted.value = false
   localStorage.removeItem(STORAGE_QUIZ)
   localStorage.removeItem(STORAGE_PARAMS)
+  await clearPdfResults()
 }
 </script>
 
@@ -849,13 +925,14 @@ body {
 }
 
 /* кнопка абсолютно позиционируется правее карточки и НЕ влияет на её размер */
-.new-quiz-button {
+.quiz-right-list {
   position: absolute;
   top: 0;
   left: calc(100% + 0.7rem);   /* справа на 1 rem от края карточки */
   white-space: nowrap;
-
-  padding: 0.6rem 1.25em;    /* больше внутренние отступы */
+  display: flex;
+  gap: 1rem;
+  flex-direction: column;
   font-size: 1rem;       /* чуть больший текст */
   border-radius: 6px;
 }

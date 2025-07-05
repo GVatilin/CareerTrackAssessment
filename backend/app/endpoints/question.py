@@ -1,3 +1,4 @@
+from app.schemas.question import QuizResult
 from fastapi import APIRouter, Depends, status, HTTPException, Body, Query, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated, Optional
@@ -236,16 +237,20 @@ async def get_quiz(session: Annotated[AsyncSession, Depends(get_session)],
     return await get_quiz_utils(session, count, ai_count, gen_count, topic_id, chapter_id)
 
 
-@api_router.post('/quiz/submit',
-            status_code=status.HTTP_200_OK,
-            responses={
-                     status.HTTP_401_UNAUTHORIZED: {
-                         "descriprion": "Non authorized"
-                     }
-                 })
-async def submit_quiz(submission: QuizSubmission,
-                      current_user: Annotated[User, Depends(get_current_user)],
-                      session: Annotated[AsyncSession, Depends(get_session)]):
+@api_router.post(
+    '/quiz/submit',
+    status_code=status.HTTP_200_OK,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {
+            "descriprion": "Non authorized"
+        }
+    }
+)
+async def submit_quiz(
+    submission: QuizSubmission,
+    _: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)]
+) -> QuizResult:
     return await submit_quiz_utils(submission, session)
 
 

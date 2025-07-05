@@ -15,9 +15,9 @@ from app.schemas import QuestionCreateForm, AnswerCreateForm, \
     AIQuestionCreateForm, QuizSubmission
 from app.utils.ai_generation import check_ai_question_utils, get_ai_feedback, \
     generate_ai_question, ai_check
+from app.schemas.question import QuestionResult, QuizResult
 
 settings = get_settings()
-
 
 async def add_question(question: QuestionCreateForm, answers: list[AnswerCreateForm], 
                        current_user: User, session: AsyncSession):
@@ -209,85 +209,66 @@ async def get_quiz_utils(session: AsyncSession, count: int, ai_count: int,
 
 
 async def submit_quiz_utils(submission: QuizSubmission, session: AsyncSession):
-    correct_count = 0
-    correct_answers = []
+    answers = []
     for_feedback = []
 
     for qa in submission.answers:
-        ans = {
-            'question_id': qa.question_id,
-            'correct_answer_id': [],
-            'is_user_right': False,
-        }
         result = await session.execute(
             select(Answer.id).where(
                 Answer.question_id == qa.question_id,
                 Answer.is_correct == True
             )
         )
-
-        correct_ids = {row[0] for row in result.all()}
+        correct_ids = set(result.scalars().all())
         user_ids = set(qa.selected_answer_id or [])
         question = await session.get(Question, qa.question_id)
-
-        tmp = correct_count
-        if question.type == 0:
-            correct_count += (len(user_ids) == 1 and next(iter(user_ids)) in correct_ids)
-        else:
-            correct_count += (user_ids == correct_ids)
-        if tmp < correct_count:
-            ans['is_user_right'] = True
-        ans['correct_answer_id'] = correct_ids
-        ans["explanation"] = question.explanation
-        correct_answers.append(ans)
+        ans = QuestionResult(
+            question_id=qa.question_id,
+            description=question.description,
+            explanation=question.explanation,
+            is_user_right=user_ids == correct_ids,
+        )
+        answers.append(ans)
         for_feedback.append({
-            'question': f'{question.description}',
-            'is_user_answer_right': ans['is_user_right']
+            'question': ans.description,
+            'is_user_answer_right': ans.is_user_right
         })
 
-    ai_feedback = []
     for qa in submission.ai_answers:
         question = await session.get(AIQuestion, qa.question_id)
-        ans = {"question_id": qa.question_id}
         res = await check_ai_question_utils(qa.question_id, qa.text, session)
-        ans["text"] = qa.text
-        ans["explanation"] = res["feedback"]
-        ans["is_user_right"] = (res["score"] > 0)
-        correct_count += (res["score"] > 0)
-        ai_feedback.append(ans)
-        correct_answers.append(ans)
+        ans = QuestionResult(
+            question_id=qa.question_id,
+            description=question.description,
+            explanation=res["feedback"],
+            is_user_right=res["score"] > 0,
+        )
+        answers.append(ans)
         for_feedback.append({
-            'question': f'{question.description}',
-            'is_user_answer_right': ans['is_user_right']
+            'question': ans.description,
+            'is_user_answer_right': ans.is_user_right
         })
 
-    gen_feedback = []
     for qa in submission.gen_answers:
         res = await ai_check(qa.description, qa.answer)
-        ans = {"question_id": qa.question_id}
-        ans["text"] = qa.answer
-        ans["explanation"] = res["feedback"]
-        ans["is_user_right"] = (res["score"] > 0)
-        correct_count += (res["score"] > 0)
-        gen_feedback.append(ans)
-        correct_answers.append(ans)
+        ans = QuestionResult(
+            question_id=qa.question_id,
+            description=qa.description,
+            explanation=res["feedback"],
+            is_user_right=res["score"] > 0,
+        )
+        answers.append(ans)
         for_feedback.append({
-            'question': qa.description,
-            'is_user_answer_right': ans['is_user_right']
+            'question': ans.description,
+            'is_user_answer_right': ans.is_user_right
         })
 
     feedback_res = await get_ai_feedback(for_feedback)
 
-
-    total_mc = len(submission.answers) + len(submission.ai_answers) + len(submission.gen_answers)
-    return {
-        "answers": correct_answers,
-        "total_mc": total_mc,
-        "correct_mc": correct_count,
-        "score_percent": round(correct_count / total_mc * 100, 2) if total_mc else 0.0,
-        "ai_answers_received": feedback_res,
-        "ai_review_required": len(ai_feedback),
-    }
+    return QuizResult(
+        answers=answers,
+        ai_recommendations=feedback_res,
+    )
 
 
 async def get_question_count_utils(topic_id: UUID, chapter_id: UUID, session: AsyncSession):
