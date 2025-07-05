@@ -104,7 +104,7 @@ function handleMouseMove(event) {
 function initCanvas() {
     const rootElement = document.documentElement
     const computedStyles = getComputedStyle(rootElement)
-    const cssColor = computedStyles.getPropertyValue('--color-container').trim()
+    const cssColor = computedStyles.getPropertyValue('--color-cavas').trim()
     const canvas = canvasRef.value
     canvas.width = window.innerWidth
     canvas.height = window.innerHeight

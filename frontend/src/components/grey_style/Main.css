@@ -51,10 +51,11 @@
     font-size: 20px;
     cursor: pointer;
     border-radius: 5px;
-    border: 2px solid transparent;
+    border: 0px solid transparent;
     background-color: var(--color-container);
     border-color: var(--color-dark-text);
     transition: background-color 0.5s ease, color 0.5s ease;
+    color: var(--color-bright-text);
 }
 
 .grey-style .schedule-field button {
@@ -62,8 +63,7 @@
 }
 
 .grey-style button:hover {
-    background-color: var(--color-background);
-    color: var(--color-bright-text);
+    background-color: var(--color-dark-button);
 }
 
 .grey-style button:active {
