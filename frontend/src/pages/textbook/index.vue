@@ -74,11 +74,11 @@
 
           <ul v-if="isSimple(selectedQuestion)" class="question__answers">
             <li v-for="answer in answers" :key="answer.id"
-                :class="[
-                  'question__answer',
-                  correctAnswers.includes(answer.id) && 'question__answer--correct',
-                  userAnswers.includes(answer.id) && !correctAnswers.includes(answer.id) && 'question__answer--wrong'
-                ]">
+              :class="[
+                'question__answer',
+                resultStatus !== null && correctAnswers.includes(answer.id) && 'question__answer--correct',
+                resultStatus !== null && userAnswers.includes(answer.id) && !correctAnswers.includes(answer.id) && 'question__answer--wrong'
+              ]">
               <label class="question__label">
                 <input v-if="selectedQuestion.type === 0"
                        type="radio"
