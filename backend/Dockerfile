@@ -18,7 +18,7 @@ RUN pip install poetry
 
 COPY pyproject.toml poetry.lock /backend/
 
-RUN poetry config virtualenvs.create false && poetry install --no-root
+RUN poetry config virtualenvs.create false && poetry install --no-root --no-interaction --no-ansi
 
 COPY app /backend/app
 
