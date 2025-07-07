@@ -11,8 +11,6 @@ from app.utils.settings import (
     update_email,
     update_password,
     verify_password,
-    get_settings,
-    get_settings_debug,
 )
 from app.utils.settings import (
     EmailUpdateForm,
@@ -94,29 +92,6 @@ async def Update_email(
             )
 
 
-@api_router.get("/get_user_settings", \
-                status_code=status.HTTP_200_OK,
-                 responses={
-                     status.HTTP_401_UNAUTHORIZED: {
-                         "descriprion": "Non authorized"
-                     }
-                 })
-async def get_user_settings(current_user: Annotated[User, Depends(get_current_user)], \
-                            session: Annotated[AsyncSession, Depends(get_session)]):
-    result = await get_settings(current_user, session)
-    return result
 
 
-@api_router.get(
-    "/get_settings_debug",
-    status_code=status.HTTP_200_OK,
-    responses={
-        status.HTTP_401_UNAUTHORIZED: {
-            "description": "Could not validate credentials",
-        }
-    },
-)
-async def get_user_settings_debug(session: Annotated[AsyncSession, Depends(get_session)],
-                                  ) -> list[SettingsDebug]:
-    result = await get_settings_debug(session)
-    return result
+

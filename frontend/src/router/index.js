@@ -14,6 +14,12 @@ const routes = [
     meta: { isLogin: false }
   },
   {
+    path: '/changepassword',
+    name: 'Password',
+    component: () => import('../pages/change-password/index.vue'),
+    meta: { isLogin: false }
+  },
+  {
     path: '/profile',
     name: 'Profile Page',
     component: () => import('../pages/profile/index.vue')
