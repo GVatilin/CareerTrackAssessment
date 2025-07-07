@@ -1,29 +1,18 @@
 <template>
   <div class="profile-page">
+    <invalidUserPanel v-show="user.username == 'Guest'"/>
     <NavBar :username="user.username" />
 
     <div class="profile-page__content">
       <div class="profile-card">
-        <div class="profile-card__info">
-          <h2 class="profile-card__username">{{ user.username }}</h2>
-          <p class="profile-card__status">
-            Статус участника:
-            <span :class="statusClass">{{ user.status }}</span>
-          </p>
-
-          <p class="profile-card__tests">
-            Пройдено тестов:
-            <span>{{ testsPassed }}</span>
-          </p>
-        </div>
-
+        <!-- 1. Аватар слева -->
         <div
           class="profile-card__avatar-container"
           @mouseenter="hover = true"
           @mouseleave="hover = false"
         >
           <img
-            :src="avatarUrl"
+            :src="avatarUrl || defaultAvatar"
             alt="User Avatar"
             class="profile-card__avatar-image"
             @click="triggerFileInput"
@@ -37,6 +26,40 @@
           <div v-if="hover" class="overlay" @click="triggerFileInput">
             <span class="change-text">Изменить аватарку</span>
           </div>
+        </div>
+
+        <!-- 2. Имя + кнопка столбиком -->
+        <div class="profile-card__info">
+          <div class="username-edit">
+            <template v-if="!editUsername">
+              <h2 class="profile-card__username">{{ user.username }}</h2>
+
+              <svg
+                class="edit-icon"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                @click="startEditUsername"
+              >
+                <path
+                  d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.001 1.001 0 000-1.42l-2.34-2.34a1.001 1.001 0 00-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"
+                />
+              </svg>
+              
+            </template>
+
+            <template v-else>
+              <input v-model="newUsername" class="username-input" />
+              <button @click="saveUsername">Сохранить</button>
+              <button @click="cancelEditUsername">Отмена</button>
+            </template>
+          </div>
+
+          <button class="logout-button" @click="logout">
+            <svg class="logout-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+              <path d="M16 17l5-5-5-5M21 12H9M13 5v-2a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-2"/>
+            </svg>
+            Log Out
+          </button>
         </div>
       </div>
     </div>
@@ -62,21 +85,19 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick, computed } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import axios from 'axios'
 import Cropper from 'cropperjs'
 import 'cropperjs/dist/cropper.css'
 import NavBar from '../../components/NavBar.vue'
-
+import invalidUserPanel from "../../components/NotRegistered.vue"
+import { useRouter } from 'vue-router'
+import defaultAvatar from '../../../public/ppr_profile.png'
 
 const user = ref({
   username: 'Loading...',
   status: ''
 })
-
-
-const testsPassed = ref(0)
-const currentYear = new Date().getFullYear()
 
 const avatarUrl = ref(null)
 const hover = ref(false)
@@ -87,11 +108,9 @@ const cropperInstance = ref(null)
 const cropperImage = ref(null)
 const cropWidth = ref(190)
 const cropHeight = ref(190)
-
-
-const statusClass = computed(() =>
-  user.value.status === 'active' ? 'active' : 'inactive'
-)
+const router = useRouter()
+const editUsername = ref(false)
+const newUsername  = ref('')
 
 const getToken = () => {
   const token = localStorage.getItem('chronoJWTToken')
@@ -99,31 +118,20 @@ const getToken = () => {
   return token
 }
 
-const fetchUser = async () => {
+async function fetchUser() {
   try {
-    const token = getToken()
-    const { data } = await axios.get(
-      `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/user/me`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
-    user.value.username = data.username
-    user.value.status = data.status || 'inactive'
-  } catch (err) {
-    console.error('Ошибка при загрузке профиля:', err)
+    const { data } = await axios.get(`http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/user/me`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    })
+    user.value = data
+  } catch {
+    user.value.username = 'Guest'
   }
 }
 
-const fetchStats = async () => {
-  try {
-    const token = getToken()
-    const { data } = await axios.get(
-      `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/user/me/stats?year=${currentYear}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
-    testsPassed.value = data.testsPassed
-  } catch (err) {
-    console.error('Ошибка при загрузке статистики:', err)
-  }
+const logout = () => {
+  localStorage.removeItem('chronoJWTToken')
+  router.push('/login')
 }
 
 const fetchAvatar = async () => {
@@ -203,10 +211,33 @@ const cancelCrop = () => {
   selectedImageUrl.value = ''
 }
 
+const startEditUsername = () => {
+  newUsername.value = user.value.username
+  editUsername.value = true
+}
+
+const cancelEditUsername = () => {
+  editUsername.value = false
+}
+
+const saveUsername = async () => {
+  try {
+    const token = getToken()
+    await axios.post(
+      `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/user/update_username`,
+      { username: newUsername.value },
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    user.value.username = newUsername.value
+    editUsername.value  = false
+  } catch (err) {
+    console.error('Error updating username:', err)
+  }
+}
+
 onMounted(async () => {
   await fetchUser()
   await fetchAvatar()
-  await fetchStats()
 })
 </script>
 
@@ -220,7 +251,7 @@ onMounted(async () => {
 
 .profile-card {
   display: flex;
-  flex-direction: row-reverse;
+  flex-direction: row;
   align-items: flex-start;
   background-color: #fff;
   border-radius: 12px;
@@ -229,13 +260,16 @@ onMounted(async () => {
   max-width: 600px;
   width: 100%;
   gap: 1.5rem;
+  align-items: center;
 }
 
 .profile-card__info {
   flex: 1;
   display: flex;
-  flex-direction: column;
+  flex-direction: column;   /* имя и кнопка — столбиком */
+  justify-content: center;
 }
+
 
 .profile-card__username {
   font-size: 1.75rem;
@@ -303,6 +337,7 @@ onMounted(async () => {
 .change-text {
   font-size: 1em;
   color: #fff;
+  text-align: center;
 }
 
 .cropper-modal {
@@ -356,4 +391,45 @@ onMounted(async () => {
   background-color: #c53030;
   color: #fff;
 }
+
+.logout-button {
+  margin-top: 1rem;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #c53030;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.logout-button .logout-icon {
+  width: 1em;
+  height: 1em;
+  margin-right: 0.5em;
+  fill: currentColor;
+}
+
+.username-edit {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.edit-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  fill: #6b7280;        /* серый */
+  cursor: pointer;
+  transform: translateY(-0.45rem);
+}
+
+.username-input {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
 </style>

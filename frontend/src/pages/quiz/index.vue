@@ -1,40 +1,23 @@
 <template>
   <div>
-    <!-- ░░░ Top navbar ░░░ -->
+    <!-- Top navbar -->
+    <invalidUserPanel v-show="user.username == 'Guest'"/>
     <NavBar :username="user.username" />
-
     <div class="quiz-layout">
-      <!-- ░░░ Sidebar: список глав ░░░ -->
-      <aside class="sidebar" v-if="chapters.length">
-        <button class="back-btn" @click="goBack">←</button>
-        <h2 class="sidebar-title">Главы</h2>
-        <ul class="topics">
-          <li
-            v-for="c in chapters"
-            :key="c.id"
-            :class="{ active: c.id === params.chapter_id }"
-            @click="selectChapter(c.id)"
-          >
-            {{ c.name }}
-          </li>
-        </ul>
-      </aside>
-
-      <!-- ░░░ Main content ░░░ -->
       <main class="main-content">
         <div v-if="!quizStarted" class="card setup-card">
           <h1 class="page-title">Создать квиз</h1>
 
           <!-- Выбор главы -->
           <div class="form-field">
-            <label>Глава</label>
+            <label>Направление</label>
             <select v-model="params.chapter_id">
-              <option :value="null">— Любая глава —</option>
+              <option :value="null">— Выберите направление —</option>
               <option v-for="c in chapters" :key="c.id" :value="c.id">{{ c.name }}</option>
             </select>
           </div>
 
-          <!-- Выбор темы (опционально, зависит от главы) -->
+          <!-- Выбор темы -->
           <div class="form-field" v-if="filteredTopics.length">
             <label>Тема <span class="text-muted">(необязательно)</span></label>
             <select v-model="params.topic_id">
@@ -46,112 +29,188 @@
           <!-- Настройка количества вопросов -->
           <div class="form-field inline">
             <label>Обычные вопросы</label>
-            <input type="number" v-model.number="params.n" min="0" />
+            <input
+              type="number"
+              v-model.number="params.n"
+              min="0"
+              :max="maxCount.total"
+            />
+            <span class="available-count">
+              доступно {{ maxCount.total ?? 0 }}
+            </span>
           </div>
           <div class="form-field inline">
-            <label>AI‑проверяемые</label>
-            <input type="number" v-model.number="params.k" min="0" />
+            <label>AI-проверяемые</label>
+            <input
+              type="number"
+              v-model.number="params.k"
+              min="0"
+              :max="maxCount.ai"
+            />
+            <span class="available-count">
+              доступно {{ maxCount.ai ?? 0 }}
+            </span>
           </div>
-          <!-- <div class="form-field inline">
-            <label>AI‑генерируемые</label>
-            <input type="number" v-model.number="params.ai_compose" min="0" />
-          </div> -->
+          <div class="form-field inline">
+            <label>AI-генерируемые</label>
+            <input
+              type="number"
+              v-model.number="params.ai_compose"
+              min="0"
+            />
+            <!-- для генерируемых вопросов лимит не выводим -->
+          </div>
 
           <button
             class="button-primary w-full"
             @click="startQuiz"
-            :disabled="!params.chapter_id && !params.topic_id"
+            :disabled="
+              loadingQuiz ||
+              (!params.chapter_id && !params.topic_id) ||
+              params.n > maxCount.total ||
+              params.k > maxCount.ai
+            "
           >
-            Начать квиз
+            {{ loadingQuiz ? 'Составляем квиз' : 'Начать квиз' }}
           </button>
         </div>
+      
+       <div v-else class="runner-wrapper">
+          <div class="card runner-card">
+            <div class="question-header">
+              <h2 class="question-title">Вопрос {{ currentIndex + 1 }} из {{ total }}</h2>
+            </div>
 
-        <div v-else class="card runner-card">
-          <div class="question-header">
-            <h2 class="question-title">Вопрос {{ currentIndex + 1 }} из {{ total }}</h2>
-          </div>
+            <div class="question-body">
+              <p class="description" v-html="current.description"></p>
 
-          <div class="question-body">
-            <p class="description" v-html="current.description"></p>
+              <!-- Варианты ответа -->
+              <template v-if="!current.ai">
+                <div
+                  v-for="ans in current.answers"
+                  :key="ans.id"
+                  class="answer-option"
+                  :class="{
+                    selected:   isSelected(ans.id),
+                    correct:    showResult && isCorrect(current.id, ans.id),
+                    incorrect:  showResult && isSelected(ans.id) && !isCorrect(current.id, ans.id)
+                  }"
+                >
+                  <label>
+                    <input
+                      :type="current.type === 1 ? 'checkbox' : 'radio'"
+                      :name="current.id"
+                      :value="ans.id"
+                      v-model="userAnswers[current.id]"
+                    />
+                    <span>{{ ans.text }}</span>
+                  </label>
+                </div>
+              </template>
+              
+              <!-- AI‑вопрос (свободный ввод) -->
+              <!-- AI-вопросы: свободный ввод -->
+              <template v-else>
+                <!-- если вопрос сгенерированный (id начинается с "gen_") -->
+                <textarea
+                  v-if="current.id && current.id.startsWith('gen_')"
+                  class="answer-input"
+                  v-model="userGenAnswers[current.id]"
+                  rows="4"
+                  placeholder="Ваш ответ..."
+                ></textarea>
 
-            <!-- Варианты ответа -->
-            <template v-if="!current.ai">
-              <div
-                v-for="ans in current.answers"
-                :key="ans.id"
-                class="answer-option"
-                :class="{
-                  selected: isSelected(ans.id),
-                  correct: showResult && isCorrect(current.id, ans.id),
-                  incorrect: showResult && !isCorrect(current.id, ans.id),
-                }"
+                <!-- обычный AI-вопрос из базы -->
+                <textarea
+                  v-else
+                  class="answer-input"
+                  v-model="userAI[current.id]"
+                  rows="4"
+                  placeholder="Ваш ответ..."
+                ></textarea>
+              </template>
+
+            </div>
+
+            <!-- Результат по текущему вопросу -->
+            <div v-if="showResult" class="result-section">
+              <p v-if="isQuestionRight(current.id) === true"  class="success-message">Правильно!</p>
+              <p v-if="isQuestionRight(current.id) === false" class="error-message">Неправильно</p>
+            </div>
+            <div v-if="showResult" class="result-section">
+              <p v-html="getExplanation(current.id)"></p>
+            </div>
+
+            <!-- Шаблон: заменили логику вывода кнопок -->
+            <div class="nav-buttons">
+              <!-- Кнопка «Назад» -->
+              <button
+                class="button-ghost"
+                @click="prev"
+                :disabled="currentIndex === 0"
               >
-                <label>
-                  <input
-                    :type="current.type === 1 ? 'checkbox' : 'radio'"
-                    :name="current.id"
-                    :value="ans.id"
-                    v-model="userAnswers[current.id]"
-                  />
-                  <span>{{ ans.text }}</span>
-                </label>
-              </div>
-            </template>
+                ← Назад
+              </button>
 
-            <!-- AI‑вопрос (свободный ввод) -->
-            <template v-else>
-              <textarea
-                class="answer-input"
-                v-model="userAI[current.id]"
-                rows="4"
-                placeholder="Ваш ответ..."
-              ></textarea>
-            </template>
-          </div>
+              <button
+                v-if="currentIndex < total - 1"
+                class="button-ghost"
+              @click="next"
+              >
+                Вперёд →
+              </button>
 
-          <!-- Результат по текущему вопросу -->
-          <div v-if="showResult" class="result-section">
-            <p v-if="isQuestionRight(current.id)" class="success-message">Правильно!</p>
-            <p v-else class="error-message">Неправильно</p>
-          </div>
-          <div v-if="showResult" class="result-section">
-            <p>{{ getExplanation(current.id) }}</p>
-          </div>
+              <!-- «Отправить» (только на последней странице и до результатов) -->
+              <button
+                v-else-if="!showResult"
+                class="button-primary"
+                @click="submit"
+                :disabled="checkingQuiz"
+              >
+                {{ checkingQuiz ? 'Проверяем квиз' : 'Отправить' }}
+              </button>
+            </div>
 
-          <!-- Навигация -->
-          <div class="nav-buttons">
-            <button class="button-ghost" @click="prev" :disabled="currentIndex === 0">← Назад</button>
-            <button class="button-ghost" @click="next" :disabled="currentIndex >= total - 1">Вперёд →</button>
+
+
+            <!-- Итог -->
+            <div v-if="currentIndex === total - 1 && showResult" class="final-result card mt-4">
+              <h3>
+                Вы ответили правильно:
+                {{ result.correctCount }} из {{ result.totalMc }} ({{ result.scorePercent }}%)
+              </h3>
+              <p class="ai-review" v-if="result.aiReview" v-html="result.aiReview"></p>
+            </div>
           </div>
 
-          <!-- Отправка результатов -->
-          <div v-if="currentIndex === total - 1 && !showResult" class="submit-area">
-            <button class="button-primary" @click="submit">Отправить</button>
+          <div class="quiz-right-list">
+            <button
+              class="button-ghost"
+              @click="resetQuiz"
+            >
+              Начать новый квиз
+            </button>
+            <button
+              v-if="pdfUrl != null"
+              class="button-ghost"
+              @click="openPdfResults"
+            >
+              Экспортировать результаты тестирования
+            </button>
           </div>
-
-          <!-- Итог -->
-          <div v-if="currentIndex === total - 1 && showResult" class="final-result card mt-4">
-            <h3>
-              Вы ответили правильно:
-              {{ result.correctCount }} из {{ result.totalMc }} ({{ result.scorePercent }}%)
-            </h3>
-            <p v-if="result.aiReviewRequired">
-              Требуется AI-проверка: {{ result.aiReviewRequired }} ответ(а)
-            </p>
-            <p class="ai-review" v-if="result.aiReview">AI‑review: {{ result.aiReview }}</p>
-          </div>
-        </div>
+        </div>  
       </main>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import axios from 'axios'
 import NavBar from '@/components/NavBar.vue'
+import invalidUserPanel from "../../components/NotRegistered.vue"
 
-// ░░░ Пользователь (для NavBar) ░░░
+// Пользователь (для NavBar)
 const user = ref({ username: 'Loading…' })
 
 async function fetchUser() {
@@ -165,56 +224,41 @@ async function fetchUser() {
   }
 }
 
-// ░░░ Данные ░░░
+const STORAGE_PARAMS = 'quizParams'
+const STORAGE_QUIZ   = 'quizState'
+const savedParams = JSON.parse(localStorage.getItem(STORAGE_PARAMS) || '{}')
+
+// Данные 
 const chapters = ref([])
 const topics = ref([])
 
-// ░░░ Параметры квиза ░░░
+// Параметры квиза
 const params = reactive({
   n: 5,
   k: 3,
   ai_compose: 2,
   chapter_id: null,
   topic_id: null,
+  ...savedParams,
 })
 
-// ░░░ Получаем главы и темы ░░░
-onMounted(async () => {
-  await fetchUser()
-  const base = `http://${process.env.VUE_APP_BACKEND_URL}:8080`
-  const [chapRes, topRes] = await Promise.all([
-    axios.get(`${base}/api/v1/topic/get_chapters`),
-    axios.get(`${base}/api/v1/topic/get_topics`),
-  ])
-  chapters.value = chapRes.data
-  topics.value = topRes.data
-})
 
-// ░░░ Выбор главы ░░░
-function selectChapter(id) {
-  params.chapter_id = id
-  params.topic_id = null
-}
-
-watch(
-  () => params.chapter_id,
-  () => {
-    params.topic_id = null
-  }
-)
-
-// ░░░ Список тем, фильтрованных по главе ░░░
+// Список тем, фильтрованных по главе
 const filteredTopics = computed(() => {
   if (!params.chapter_id) return topics.value
   return topics.value.filter(t => t.chapter_id === params.chapter_id)
 })
 
-// ░░░ Состояния квиза ░░░
+// Состояния квиза
 const quizStarted = ref(false)
 const questions = ref([])
 const currentIndex = ref(0)
 const userAnswers = reactive({})
 const userAI = reactive({})
+const userGenAnswers = reactive({})
+const genQuestions = ref([])
+const pdfUrl = ref(null)
+const pdfFilename = ref(null)
 
 const showResult = ref(false)
 const result = reactive({
@@ -222,41 +266,70 @@ const result = reactive({
   correctCount: 0,
   scorePercent: 0,
   aiReview: '',
-  aiReviewRequired: 0,
   answers: {},
 })
 
 const total = computed(() => questions.value.length)
 const current = computed(() => questions.value[currentIndex.value] || {})
 
-function goBack() {
-  window.history.length > 1 && window.history.back()
-}
+const maxCount = reactive({
+  total: null,
+  ai: null,
+})
 
-// ░░░ Старт квиза ░░░
+const loadingQuiz = ref(false)
+const checkingQuiz = ref(false)
+
+// Старт квиза
 async function startQuiz() {
+  loadingQuiz.value = true
+  localStorage.removeItem(STORAGE_QUIZ)
+
   const base = `http://${process.env.VUE_APP_BACKEND_URL}:8080`
-  const p = { n: params.n, k: params.k }
+  const p = { n: params.n, k: params.k, m: params.ai_compose }
   if (params.chapter_id) p.chapter_id = params.chapter_id
   if (params.topic_id) p.topic_id = params.topic_id
-  if (params.ai_compose) p.ai_compose = params.ai_compose
 
-  const { data } = await axios.get(`${base}/api/v1/question/quiz/get`, { params: p })
-  const qs = [
-    ...data.questions.map(q => ({ ...q, ai: false })),
-    ...data.ai_questions.map(q => ({ ...q, ai: true })),
-  ]
-  questions.value = qs
-  quizStarted.value = true
-  console.log(qs)
+  try {
+    const { data } = await axios.get(`${base}/api/v1/question/quiz/get`, { params: p })
+    const qs = [
+      ...data.questions.map(q => ({ ...q, ai: false })),
+      ...data.ai_questions.map(q => ({ ...q, ai: true })),
+      ...data.gen_question.map((text, idx) => ({
+        id: `gen_${idx}`,
+        description: text,
+        ai: true,
+        type: 0,
+        answers: []
+      }))
+    ]
 
-  qs.forEach(q => {
-    if (q.ai) userAI[q.id] = ''
-    else userAnswers[q.id] = q.type === 1 ? [] : null
-  })
+    resetLocalState()
+    questions.value = qs
+    quizStarted.value = true
+    genQuestions.value = data.gen_question
+
+    console.log(qs)
+    
+    questions.value.forEach(q => {
+      if (q.ai && q.id.startsWith('gen_')) {
+        userGenAnswers[q.id] = ''           // для gen_question
+      }
+      else if (q.ai) {
+        userAI[q.id] = ''                   // для ai_questions
+      }
+      else {
+        userAnswers[q.id] = q.type === 1 ? [] : null
+      }
+    })
+
+    saveQuizState()
+  } finally {
+      loadingQuiz.value = false
+  }
 }
 
-// ░░░ Навигация ░░░
+// Навигация
 function next() {
   if (currentIndex.value < total.value - 1) currentIndex.value++
 }
@@ -289,6 +362,7 @@ function getToken() {
 }
 
 async function submit() {
+  checkingQuiz.value = true
   const payload = {
     answers: Object.entries(userAnswers).map(([qid, sel]) => ({
       question_id: qid,
@@ -298,20 +372,245 @@ async function submit() {
       question_id: qid,
       text: txt,
     })),
+    gen_answers: Object.entries(userGenAnswers).map(([qid, ans]) => ({
+      question_id: qid,
+      description: questions.value.find(q => q.id === qid).description,
+      answer: ans
+    }))
   }
   const token = getToken()
   const { data } = await axios.post(`http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/question/quiz/submit`, payload, {
     headers: { Authorization: `Bearer ${token}` },
   })
 
-  // ✔️ Обрабатываем новый ответ бэкенда
-  result.totalMc = data.total_mc
-  result.correctCount = data.correct_mc
+  result.totalMc = data.total_questions
+  result.correctCount = data.total_correct_answers
   result.scorePercent = data.score_percent
-  result.aiReview = data.ai_answers_received
-  result.aiReviewRequired = data.ai_review_required
+  result.aiReview = data.ai_recommendations
   result.answers = data.answers || []
   showResult.value = true
+  checkingQuiz.value = false
+  saveQuizState()
+  await getPdfResults()
+}
+
+async function getPdfResults() {
+  const resultsData = {
+    answers: result.answers,
+    ai_recommendations: result.aiReview
+  }
+  const token = getToken()
+
+  try {
+    const response1 = await axios.post(
+      `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/docs/task_results_pdf`,
+      resultsData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    )
+    
+    pdfFilename.value = response1.data
+
+    const response2 = await axios.get(
+      `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/docs/task_results_pdf/${pdfFilename.value}`,
+      {
+        responseType: 'blob',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    )
+
+    const blob = new Blob([response2.data], { type: 'application/pdf' })
+    pdfUrl.value = URL.createObjectURL(blob)
+  } catch (error) {
+    console.error('Error generating PDF:', error)
+  }
+}
+
+async function clearPdfResults() {
+  pdfUrl.value = null
+  const token = getToken()
+
+  try {
+    if (pdfFilename.value !== null) {
+      await axios.delete(
+        `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/docs/task_results_pdf/${pdfFilename.value}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      )
+    }
+  } catch (error) {
+    console.error('Error removing PDF:', error)
+  }
+  pdfFilename.value = null
+}
+
+function openPdfResults() {
+  window.open(pdfUrl.value, '_blank');
+}
+
+// Функция для запроса количества вопросов
+async function updateQuestionCount() {
+  // если ни глава, ни тема не выбраны — сбрасываем
+  if (!params.chapter_id && !params.topic_id) {
+    maxCount.total = null
+    maxCount.ai = null
+    return
+  }
+
+  const base = `http://${process.env.VUE_APP_BACKEND_URL}:8080`
+  const query = {}
+  if (params.topic_id) {
+    query.topic_id = params.topic_id
+  } else {
+    query.chapter_id = params.chapter_id
+  }
+
+  try {
+    const { data } = await axios.get(
+      `${base}/api/v1/question/quiz/get_question_count`,
+      { params: query }
+    )
+    maxCount.total = data.count
+    maxCount.ai    = data.ai_count
+
+    // Не даём params.n и params.k превысить новые лимиты
+    if (params.n > data.count) params.n = data.count
+    if (params.k > data.ai_count) params.k = data.ai_count
+  } catch (e) {
+    console.error('Не удалось получить количество вопросов:', e)
+  }
+}
+
+// При смене chapter_id — сбрасываем topic_id и запрашиваем count
+watch(() => params.chapter_id, () => {
+  params.topic_id = null
+  updateQuestionCount()
+})
+
+// При смене topic_id — просто запрашиваем count
+watch(() => params.topic_id, updateQuestionCount)
+
+// ─── NEW ───────────────────────────────────────────────────────────────────
+function saveQuizState() {
+  try {
+    if (!quizStarted.value) return
+    const plainResult = JSON.parse(JSON.stringify(result))
+
+    localStorage.setItem(STORAGE_QUIZ, JSON.stringify({
+      quizStarted:    quizStarted.value,
+      questions:      questions.value,
+      currentIndex:   currentIndex.value,
+      showResult:     showResult.value,
+      userAnswers:    JSON.parse(JSON.stringify(userAnswers)),
+      userAI:         JSON.parse(JSON.stringify(userAI)),
+      userGenAnswers: JSON.parse(JSON.stringify(userGenAnswers)),
+      result:         plainResult,
+    }))
+  } catch (e) {
+    console.error('Не удалось сохранить состояние квиза:', e)
+  }
+}
+
+function restoreQuizState() {
+  const saved = localStorage.getItem(STORAGE_QUIZ)
+  if (!saved) return
+  try {
+    const data = JSON.parse(saved)
+    if (!data.quizStarted) return
+
+    quizStarted.value  = data.quizStarted
+    questions.value    = data.questions || []
+    currentIndex.value = data.currentIndex || 0
+    showResult.value   = data.showResult || false
+
+    Object.assign(userAnswers,    data.userAnswers    || {})
+    Object.assign(userAI,         data.userAI         || {})
+    Object.assign(userGenAnswers, data.userGenAnswers || {})
+    Object.assign(result,         data.result         || {})
+  } catch (e) {
+    console.error('Не удалось восстановить состояние квиза:', e)
+    localStorage.removeItem(STORAGE_QUIZ)
+  }
+}
+
+function resetLocalState() {
+  questions.value    = []
+  currentIndex.value = 0
+  quizStarted.value  = false
+  showResult.value   = false
+
+  Object.keys(userAnswers)   .forEach(k => delete userAnswers[k])
+  Object.keys(userAI)        .forEach(k => delete userAI[k])
+  Object.keys(userGenAnswers).forEach(k => delete userGenAnswers[k])
+
+  Object.assign(result, {
+    totalMc:          0,
+    correctCount:     0,
+    scorePercent:     0,
+    aiReview:         '',
+    answers:          [],
+  })
+}
+
+// Получаем главы и темы
+onMounted(async () => {
+  await fetchUser()
+  const base = `http://${process.env.VUE_APP_BACKEND_URL}:8080`
+  const [chapRes, topRes] = await Promise.all([
+    axios.get(`${base}/api/v1/topic/get_chapters`),
+    axios.get(`${base}/api/v1/topic/get_topics`),
+  ])
+  chapters.value = chapRes.data
+  topics.value = topRes.data
+
+  restoreQuizState()
+
+  if (params.chapter_id || params.topic_id) {
+    updateQuestionCount()
+  }
+})
+
+onUnmounted(async () => {
+  await clearPdfResults() 
+})
+
+watch(
+  () => params.chapter_id,
+  () => {
+    params.topic_id = null
+  }
+)
+
+watch(params,
+  () => localStorage.setItem(STORAGE_PARAMS, JSON.stringify(params)),
+  { deep: true }
+)
+
+watch([
+  questions,
+  currentIndex,
+  userAnswers,
+  userAI,
+  userGenAnswers,
+  showResult,
+  result,
+  quizStarted,
+], saveQuizState, { deep: true })
+
+async function resetQuiz() {
+  resetLocalState()
+  quizStarted.value = false
+  localStorage.removeItem(STORAGE_QUIZ)
+  localStorage.removeItem(STORAGE_PARAMS)
+  await clearPdfResults()
 }
 </script>
 
@@ -396,7 +695,7 @@ body {
   border: 1px solid #ececec;
   border-radius: 6px;
   padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05)
 }
 .mt-4 {
   margin-top: 1.5rem;
@@ -427,9 +726,8 @@ body {
   font-size: 1rem;
 }
 
-/* ░░░ Buttons ░░░ */
 .button-primary {
-  background: var(--color-primary);
+  background: #38a169;
   color: #fff;
   border: none;
   border-radius: 4px;
@@ -439,7 +737,7 @@ body {
   transition: background 0.2s;
 }
 .button-primary:hover {
-  background: #00979d;
+  background: #2f855a;
 }
 .button-primary:disabled {
   opacity: 0.6;
@@ -466,7 +764,6 @@ body {
   width: 100%;
 }
 
-/* ░░░ Question area ░░░ */
 .question-body {
   margin-bottom: 1rem;
 }
@@ -501,13 +798,13 @@ body {
   border: 1px solid var(--color-border);
   border-radius: 4px;
   resize: vertical;
+  box-sizing: border-box;
 }
 .answer-input:focus {
   border-color: var(--color-primary);
   outline: none;
 }
 
-/* ░░░ Result ░░░ */
 .result-section {
   margin-top: 1rem;
 }
@@ -527,7 +824,6 @@ body {
   margin-top: 0.75rem;
 }
 
-/* ░░░ Nav buttons ░░░ */
 .nav-buttons {
   display: flex;
   justify-content: space-between;
@@ -552,4 +848,97 @@ body {
     width: 100%;
   }
 }
+
+.form-field.inline label {
+  flex: 0 0 8rem; /* фиксированная ширина метки для выравнивания */
+  margin: 0;
+  padding-right: 0.5rem;
+}
+
+.form-field.inline select {
+  flex: 1;
+}
+
+.form-field.inline input[type='number'] {
+  flex: 0 0 auto;
+  width: 2.3rem;
+}
+
+.available-count {
+  margin-left: 0.5rem;
+  font-size: 0.875rem;
+  color: #666666;
+  white-space: nowrap;
+}
+
+.card.setup-card,
+.card.runner-card {
+  min-height: 60%;
+}
+
+.card.setup-card,
+.card.runner-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.card.setup-card .button-primary {
+  margin-top: auto;
+}
+
+.card.runner-card .nav-buttons,
+.card.runner-card .submit-area {
+  margin-top: auto;
+}
+
+.card.runner-card .nav-buttons,
+.card.runner-card .submit-area {
+  background: var(--color-bg);
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.nav-buttons .button-ghost {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+}
+
+.nav-buttons .button-ghost,
+.nav-buttons .button-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-buttons button {
+  min-height: 2.5rem;
+}
+
+.nav-buttons .button-primary {
+  min-width: 12rem;
+}
+
+
+.runner-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+/* кнопка абсолютно позиционируется правее карточки и НЕ влияет на её размер */
+.quiz-right-list {
+  position: absolute;
+  top: 0;
+  left: calc(100% + 0.7rem);   /* справа на 1 rem от края карточки */
+  white-space: nowrap;
+  display: flex;
+  gap: 1rem;
+  flex-direction: column;
+  font-size: 1rem;       /* чуть больший текст */
+  border-radius: 6px;
+}
+
+.card.runner-card {
+  min-height: 60vh;   /* 60 % высоты окна вместо относительных 60 % родителя */
+}
+
 </style>

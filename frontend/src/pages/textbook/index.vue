@@ -1,5 +1,6 @@
 <template>
   <div class="app">
+    <invalidUserPanel v-show="user.username == 'Guest'"/>
     <NavBar :username="user.username" />
 
     <div class="app__body">
@@ -147,7 +148,7 @@
                 <line x1="4" y1="8" x2="12" y2="16" stroke="#333" stroke-width="2" />
                 <line x1="20" y1="8" x2="12" y2="16" stroke="#333" stroke-width="2" />
               </svg>
-              <span>{{ showExplanation ? 'Скрыть ответ' : 'Показать ответ' }}</span>
+              <span>{{ showExplanation ? 'Скрыть объяснение' : 'Показать объяснение' }}</span>
             </button>
           </div>
 
@@ -185,6 +186,7 @@
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import NavBar from "../../components/NavBar.vue";
+import invalidUserPanel from "../../components/NotRegistered.vue"
 
 const user = ref({ username: "Loading..." });
 const chapters = ref([])
@@ -216,26 +218,16 @@ const getToken = () => {
   return token
 }
 
-const getUser = async () => {
+async function fetchUser() {
   try {
-    const token = getToken()
-    const { data } = await axios.get(
-      `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/user/me`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-    )
-    return data
+    const { data } = await axios.get(`http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/user/me`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    })
+    user.value = data
   } catch {
-    return -1
+    user.value.username = 'Guest'
   }
 }
-
-const fetchUser = async () => {
-  user.value = await getUser();
-};
 
 const fetchChapters = () =>
   axios.get(

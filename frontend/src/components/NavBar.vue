@@ -9,13 +9,13 @@
         <nav class="app__nav">
         <ul class="app__tabs">
             <li class="app__tab">
-            <router-link to="/textbook" class="nav-link" active-class="active-link">Учебник</router-link>
+            <router-link to="/" class="nav-link" active-class="active-link">Учебник</router-link>
             </li>
             <li class="app__tab">
             <router-link to="/quiz" class="nav-link" active-class="active-link">Квизы</router-link>
             </li>
             <li class="app__tab">
-            <router-link to="/activity" class="nav-link" active-class="active-link">Добавить вопросы</router-link>
+            <router-link to="/add" class="nav-link" active-class="active-link">Добавить вопросы</router-link>
             </li>
         </ul>
         </nav>
@@ -25,11 +25,11 @@
         </router-link>
         <router-link to="/profile" class="nav-link">
             <img
-            :src="avatarUrl"
-            alt="User Avatar"
-            class="app__avatar"
-            @click="triggerFileInput"
-          />
+              :src="avatarUrl || defaultAvatar"
+              alt="User Avatar"
+              class="app__avatar"
+              @click="triggerFileInput"
+            />
         </router-link>
         </div>
     </header>
@@ -39,6 +39,7 @@
 <script setup>
 import { defineProps, ref, onMounted } from 'vue'
 import axios from 'axios'
+import defaultAvatar from '../../public/ppr_profile.png'
 
 const props = defineProps({
   username: {
@@ -113,33 +114,6 @@ onMounted(async () => {
   justify-content: center;
 }
 
-.app__tabs {
-  display: flex;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  justify-content: center;
-  align-items: center;
-}
-
-.app__tab {
-  padding: 0 2.5rem;
-  cursor: pointer;
-}
-
-.app__tab:not(:first-child) {
-  border-left: 1px solid #ccc;
-}
-
-.app__tab:hover {
-  color: #3182ce;
-}
-
-.app__tab--active {
-  color: #3182ce;
-  border-bottom: 2px solid #3182ce;
-}
-
 .app__profile {
   position: absolute;
   right: 24px;
@@ -157,15 +131,4 @@ onMounted(async () => {
   border-radius: 50%;
 }
 
-.nav-link {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  text-decoration: none;
-  color: inherit;
-}
-
-.active-link {
-  color: #3182ce;
-}
 </style>

@@ -19,3 +19,7 @@ class UserDebugResponse(BaseModel):
 class UserCreateForm(BaseModel):
     email: str = Field(unique=True)
     password: str = Field()
+
+
+class UpdateUsernameForm(BaseModel):
+    username: str

@@ -2,6 +2,18 @@ FROM python:3.12-slim
 
 WORKDIR /backend
 
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    texlive-xetex \
+    texlive-latex-recommended \
+    texlive-latex-extra \
+    texlive-fonts-recommended \
+    texlive-lang-cyrillic \
+    lmodern \
+    fonts-liberation \
+    pandoc \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN pip install poetry
 
 COPY pyproject.toml poetry.lock /backend/

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, computed_field
 from uuid import UUID
 from typing import List
 
@@ -94,6 +94,14 @@ class UserAIAnswerForm(BaseModel):
     text: str
 
 
+class UserGenAnswerForm(BaseModel):
+    """
+    Форма для проверки сгенерированного вопроса
+    """
+    question_id: str
+    description: str
+    answer: str
+
 class CorrectAnswers(BaseModel):
     """
     Возвращает список правильных вариантов ответа и правильно ли ответил пользователь
@@ -142,6 +150,7 @@ class QuizResponse(BaseModel):
     """
     questions: List[QuestionQuizResponse]
     ai_questions: List[AIQuestionQuizResponse]
+    gen_question: List[str]
 
 
 class QuizSubmission(BaseModel):
@@ -150,3 +159,37 @@ class QuizSubmission(BaseModel):
     """
     answers: List[UserAnswerForm]
     ai_answers: List[UserAIAnswerForm]
+    gen_answers: List[UserGenAnswerForm]
+
+
+class QuestionResult(BaseModel):
+    """
+    Результаты вопроса
+    """
+    question_id: UUID | str
+    description: str
+    explanation: str
+    is_user_right: bool
+
+
+class QuizResult(BaseModel):
+    """
+    Результаты квиза
+    """
+    answers: list[QuestionResult]
+    ai_recommendations: str
+
+    @computed_field
+    @property
+    def total_questions(self) -> int:
+        return len(self.answers)
+
+    @computed_field
+    @property
+    def score_percent(self) -> float:
+        return round(self.total_correct_answers / self.total_questions * 100, 2) if self.total_questions else 0.0
+    
+    @computed_field
+    @property
+    def total_correct_answers(self) -> int:
+        return sum(ans.is_user_right for ans in self.answers)

@@ -35,11 +35,6 @@ async function loginUserWrap() {
     isLoading.value = false
 }
 
-async function googleLogin() {
-    const authUrl = `http://${process.env.VUE_APP_DNS_URL}/api/v1/auth/google/login`
-    window.location.href = authUrl;
-}
-
 function clearFields() {
     username.value = ""
     email.value = ""
@@ -64,8 +59,8 @@ onMounted(() => {
         <div class="login-main">
             <div class="container">
                 <div class="welcome-text">
-                    <h1>Добро пожаловать в <span class="chrono">Chrono!</span></h1>
-                    <h2>Каждый миг на счету - планируй с умом, <br> а мы поможем!</h2>
+                    <h1>Добро пожаловать в <span class="chrono">Career Track!</span></h1>
+                    <h2>Уникальная платформа для самотестирования <br> компетенций сотрудников</h2>
                     <p class="error-msg" style="text-align: left;">{{ response }}</p>
                 </div>
 
@@ -97,13 +92,6 @@ onMounted(() => {
                             @click="registration = (registration + 1) % 2"
                         >
                             Еще нет аккаунта (зарегистрироваться)
-                        </div>
-                        <div
-                            class="bottom-text"
-                            style="margin-top: 2%;"
-                            @click="googleLogin"
-                        >
-                            Войти через <b>Google</b>
                         </div>
                     </div>
                 </transition>
