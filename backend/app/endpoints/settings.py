@@ -45,7 +45,7 @@ async def Update_password(
     except:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="verify mistake"
+            detail="verify mistake" +" " +  updated_password.oldpassword + user.password
         )
     if (ans):
         try:
