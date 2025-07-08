@@ -188,7 +188,7 @@ const onSubmit = async () => {
         await axios.post(`http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/question/create_question`, {
           question: {
             description: questionText.value,
-            type: correctIndices.length > 1 ? 2 : 1,
+            type: correctIndices.value.length > 1 ? 2 : 1,
             topic_id: questionTopicId.value,
             explanation: ''
           },
