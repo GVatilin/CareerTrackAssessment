@@ -195,7 +195,7 @@ function showMessage (text, type = '') {
   font: 600 1rem/1 Onest, var(--font-family-base), sans-serif;
   cursor: pointer;
   transition: opacity 0.2s, filter 0.2s;
-  opacity: 1; /* видима сразу */
+  opacity: 1;
 }
 
 .button-primary:hover {
