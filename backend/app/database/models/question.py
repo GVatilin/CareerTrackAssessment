@@ -19,7 +19,7 @@ class Question(DeclarativeBase):
     description = Column(String)
     type = Column(Integer)         #0 - один ответ правильный, 1 - несколько ответов
     explanation = Column(String)
-    
+    picture = Column(String)
     topic_id = Column(UUID, ForeignKey("Topic.id"), index=True)
     topic = relationship("Topic")
 
@@ -45,7 +45,7 @@ class AIQuestion(DeclarativeBase):
     author = relationship("User")
     description = Column(String)
     explanation = Column(String)
-
+    picture = Column(String)
     topic_id = Column(UUID, ForeignKey("Topic.id"), index=True)
     topic = relationship("Topic")
 

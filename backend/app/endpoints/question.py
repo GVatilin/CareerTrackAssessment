@@ -45,35 +45,39 @@ api_router = APIRouter(
                          "descriprion": "Non authorized"
                      }
                  })
-async def create_question(question: Annotated[QuestionCreateForm, Body()],
-                          answers: Annotated[list[AnswerCreateForm], Body()],
-                          current_user: Annotated[User, Depends(get_current_user)],
-                          session: Annotated[AsyncSession, Depends(get_session)]) -> None:
-    is_success = await add_question(question, answers, current_user, session)
+@api_router.post(
+    "/create_question",
+    response_model=QuestionResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {"description": "Not authorized"}
+    },
+)
+async def create_question(
+    question: Annotated[QuestionCreateForm, Body()],
+    answers: Annotated[list[AnswerCreateForm], Body()],
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> QuestionResponse:
+    # add_question теперь возвращает именно QuestionResponse
+    return await add_question(question, answers, current_user, session)
 
-    if is_success:
-        return {"message": "Question created"}
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, \
-                        detail="Error creating question")
 
-
-@api_router.post('/create_ai_question',
-            status_code=status.HTTP_200_OK,
-            responses={
-                     status.HTTP_401_UNAUTHORIZED: {
-                         "descriprion": "Non authorized"
-                     }
-                 })
-async def create_ai_question(question: Annotated[AIQuestionCreateForm, Body()],
-                          current_user: Annotated[User, Depends(get_current_user)],
-                          session: Annotated[AsyncSession, Depends(get_session)]) -> None:
-    is_success = await add_ai_question(question, current_user, session)
-
-    if is_success:
-        return {"message": "Question created"}
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, \
-                        detail="Error creating question")
-
+@api_router.post(
+    "/create_ai_question",
+    response_model=AIQuestionResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {"description": "Not authorized"}
+    },
+)
+async def create_ai_question(
+    question: Annotated[AIQuestionCreateForm, Body()],
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> AIQuestionResponse:
+    # add_ai_question возвращает AIQuestionResponse
+    return await add_ai_question(question, current_user, session)
 
 @api_router.get('/get_questions/simple',
             status_code=status.HTTP_200_OK,
