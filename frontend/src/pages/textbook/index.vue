@@ -121,7 +121,10 @@
               ]">
             {{ resultMessage }}
             </p>
-            <p class="ai-result__feedback">{{ aiFeedback }}</p>
+            <div
+              class="ai-result__feedback"
+              v-html="aiFeedback"
+            />
           </div>
 
           <div class="question__actions">

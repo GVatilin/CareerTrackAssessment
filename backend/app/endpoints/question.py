@@ -269,7 +269,7 @@ async def check_ai_question(response: UserAIAnswerForm,
                             current_user: Annotated[User, Depends(get_current_user)],
                             session: Annotated[AsyncSession, Depends(get_session)],
                             settings: Annotated[DefaultSettings, Depends(get_settings)]):
-    return await check_ai_question_utils(response.question_id, response.text, session, settings.API_KEY)
+    return await check_ai_question_utils(response.question_id, response.text, session)
 
 
 @api_router.get('/quiz/get_question_count',
