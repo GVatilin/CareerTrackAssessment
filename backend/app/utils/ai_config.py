@@ -1,8 +1,7 @@
 from uuid import uuid4
 
-ai_url = "https://api.openai.com/v1/chat/completions"
-ai_model = "gpt-4.1-mini"
-
+ai_url = "https://api.deepseek.com/chat/completions"
+ai_model = "deepseek-chat"
 
 async def get_headers(api_key):
     return {
