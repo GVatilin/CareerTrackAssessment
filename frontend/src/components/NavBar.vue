@@ -81,6 +81,7 @@ onMounted(async () => {
 
 
 <style scoped>
+  @import "./grey_style/Main.css";
 .header {
   position: relative;
   display: flex;
