@@ -57,7 +57,7 @@
                 <button v-if="answers.length &gt; 2" type="button" class="remove-btn" @click="removeAnswer(idx)">×</button>
               </div>
             </div>
-            <button type="button" class="btn btn--secondary" @click="addAnswer">Добавить вариант</button>
+            <button type="button" class="btn-add" @click="addAnswer">Добавить вариант</button>
           </template>
         </template>
 
@@ -80,7 +80,7 @@
           </div>
         </template>
 
-        <button class="btn" type="submit" :disabled="isSubmitDisabled">Создать</button>
+        <button class="btn-submit" type="submit" :disabled="isSubmitDisabled">Создать</button>
       </form>
     </div>
   </div>
@@ -224,6 +224,7 @@ const onSubmit = async () => {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  background-color: #ffffff;
 }
 .question-page__wrapper {
   flex: 1;
@@ -235,13 +236,10 @@ const onSubmit = async () => {
 .question-page__form {
   background: #fff;
   padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  width: 55%;
-  max-width: 700px;
+  width: 35%;
 }
 .question-card__field {
   display: flex;
@@ -257,7 +255,7 @@ const onSubmit = async () => {
 .question-card__field textarea {
   padding: 0.75rem;
   font-size: 1rem;
-  border: 1px solid #ccc;
+  border: 1px solid #87b4dd;
   border-radius: 6px;
 }
 .question-card__field textarea {
@@ -265,20 +263,35 @@ const onSubmit = async () => {
   resize: vertical;
 }
 
-.btn {
-  padding: 1rem 2rem;
+.btn-submit {
   font-size: 1.1rem;
   font-weight: 600;
   border-radius: 8px;
   border: none;
   cursor: pointer;
-  background-color: #2c7a7b;
+  background-color: #38a169;
   color: #fff;
   align-self: center;
   transition: background-color 0.3s;
+  width: 25%;
+  height: 3rem;
 }
 
-.btn:hover {
-  background-color: #276a69;
+.btn-submit:hover {
+  background-color: #2f855a;
+}
+
+.btn-add {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  align-self: flex-start;
+  background-color: #87b4dd;
+  color: #fff;
+  border-radius: 6px;
+  border: 0;
+}
+
+.btn-add:hover {
+  background-color: #7a9cbd;
 }
 </style>
