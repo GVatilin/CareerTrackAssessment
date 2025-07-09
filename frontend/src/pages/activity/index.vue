@@ -265,7 +265,7 @@ const onSubmit = async () => {
           {
             question: {
               description: questionText.value,
-              type: correctIndices.value.length > 1 ? 2 : 1,
+              type: correctIndices.value.length > 1 ? 1 : 0,
               topic_id: questionTopicId.value,
               explanation: ''
             },
