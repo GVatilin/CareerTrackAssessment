@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, computed_field
 from uuid import UUID
-from typing import List
+from typing import List, Optional
 
 
 #  -------------Creating------------------
@@ -12,6 +12,7 @@ class QuestionCreateForm(BaseModel):
     type: int
     topic_id: UUID
     explanation: str
+    picture : str | None = None 
 
 
 class AnswerCreateForm(BaseModel):
@@ -29,9 +30,9 @@ class AIQuestionCreateForm(BaseModel):
     description: str
     topic_id: UUID
     explanation: str
+    picture : str | None = None 
 
 
-# --------------Response-----------------
 class QuestionResponse(BaseModel):
     id: UUID
     description: str 

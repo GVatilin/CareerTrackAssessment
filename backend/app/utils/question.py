@@ -15,7 +15,7 @@ from app.schemas import QuestionCreateForm, AnswerCreateForm, \
     AIQuestionCreateForm, QuizSubmission
 from app.utils.ai_generation import check_ai_question_utils, get_ai_feedback, \
     generate_ai_question, ai_check
-from app.schemas.question import QuestionResult, QuizResult
+from app.schemas.question import AIQuestionResponse, QuestionResponse, QuestionResult, QuizResult
 
 settings = get_settings()
 
@@ -39,7 +39,13 @@ async def add_question(question: QuestionCreateForm, answers: list[AnswerCreateF
     except Exception as e:
         await session.rollback()
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
-    return True
+    return QuestionResponse(
+        id=question.id,
+        description=question.description,
+        type=question.type,
+        topic_id=question.topic_id,
+        explanation=question.explanation
+    )
 
 
 async def add_ai_question(question: AIQuestionCreateForm, current_user: User, 
@@ -54,7 +60,13 @@ async def add_ai_question(question: AIQuestionCreateForm, current_user: User,
     except Exception as e:
         await session.rollback()
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
-    return True
+    return AIQuestionResponse(
+        id=question.id,
+        description=question.description,
+        explanation=question.explanation,
+        author_id=question.author_id,
+        topic_id=question.topic_id
+    )
 
 
 async def get_all_questions(session: AsyncSession):

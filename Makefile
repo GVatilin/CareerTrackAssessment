@@ -35,13 +35,13 @@ BACKUP_FILE = .env.bak
 HOST_KEY = POSTGRES_HOST
 
 migration:
-	cd $(TARGET_DIR) && $(ALEMBIC_CMD) revision --autogenerate -m "$(filter-out $@,$(MAKECMDGOALS))"
+	cd $(TARGET_DIR) && $(ALEMBIC_CMD) revision --autogenerate -m "$(filter-out $@,$(MAKECMDGOALS))" && $(ALEMBIC_CMD) upgrade head
 upgrade:
 	cd $(TARGET_DIR) && $(ALEMBIC_CMD) upgrade head
 FRONT_DIR = frontend
 run_front:
 	cd $(FRONT_DIR) && npm install && npm run serve
 poetry:
-	cd backend && poetry install && poetry shell
+	cd backend && poetry install && poetry shell && cd ..
 
 
