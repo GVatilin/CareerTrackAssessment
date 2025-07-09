@@ -71,7 +71,7 @@
           <h2 class="question__title">
             {{ selectedQuestion.description }}
           </h2>
-
+          <img v-if="imageSrc" :src="imageSrc" class="question__image" />
           <ul v-if="isSimple(selectedQuestion)" class="question__answers">
             <li v-for="answer in answers" :key="answer.id"
               :class="[
@@ -195,7 +195,8 @@ const user = ref({ username: "Loading..." });
 const chapters = ref([])
 const topics = ref([])
 const questions = ref([])
-
+const imageSrc = ref(null)      // готовый objectURL
+let   revokeUrl = null 
 const openChapters = ref([])
 const openTopics = ref([])
 
@@ -213,6 +214,7 @@ const aiResponse   = ref('')
 const aiScore     = ref(null)   // 0 | 1 | 2
 const aiFeedback  = ref('')     // текст от сервера
 const isAnalyzing = ref(false)
+
 
 
 const getToken = () => {
@@ -314,7 +316,32 @@ const toggleTopic = id => {
   localStorage.setItem('openTopics', JSON.stringify(openTopics.value));
 }
 const isTopicOpen = id => openTopics.value.includes(id)
+async function loadQuestionImage(id) {
+  console.log('loadQuestionImage →', id)
 
+  // убрать предыдущую картинку, если была
+  if (revokeUrl) { revokeUrl(); revokeUrl = null }
+  imageSrc.value = null
+
+  try {
+    const res = await axios.get(
+      `http://${process.env.VUE_APP_BACKEND_URL}:8080/api/v1/file/questions/${id}/picture`,
+      {
+        headers: { Authorization: `Bearer ${getToken()}` },
+        responseType: 'blob',            // ← blob обязателен!
+      }
+    )
+
+    // ▸ создаём objectURL и показываем
+    const url = URL.createObjectURL(res.data)
+    imageSrc.value = url
+    revokeUrl = () => URL.revokeObjectURL(url)
+
+    console.log('picture OK, size', res.data.size, 'type', res.data.type)
+  } catch (e) {
+    console.warn('picture error', e)
+  }
+}
 
 const selectQuestion = async question => {
   resetQuestion()
@@ -326,6 +353,8 @@ const selectQuestion = async question => {
 
   await fetchAnswers(question.id)
   await loadState(question.id)
+  await loadQuestionImage(question.id);
+  
 }
 
 const submitAnswers = async () => {
@@ -535,6 +564,13 @@ async function loadState(questionId) {
 </script>
 
 <style scoped>
+.question__image {
+  max-width: 100%;
+  max-height: 40vh;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  object-fit: contain;
+}
 .app {
   display: flex;
   flex-direction: column;

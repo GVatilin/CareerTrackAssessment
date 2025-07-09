@@ -76,7 +76,6 @@ async def create_ai_question(
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> AIQuestionResponse:
-    # add_ai_question возвращает AIQuestionResponse
     return await add_ai_question(question, current_user, session)
 
 @api_router.get('/get_questions/simple',
